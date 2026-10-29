@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mind Palace</title>
+<meta name="description" content="Mind maps you lay out by dragging ideas around a canvas, with an outline of the same map that you can edit side by side.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#172129" media="(prefers-color-scheme: dark)">
+<script>try{var t=localStorage.getItem('petravanta.theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ===== Shared look: petravanta's apps =====
+   Canonical copy of the tokens, type and components used by Fitness Coach and Skating Mentor (and this hub).
+   Apps currently inline this block between "Shared look" and "end shared look"; update both when it changes.
+   Each app only overrides the --accent values after this block. */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --sunk:#e3e9ec; --line:#cdd6db; --ink:#14212a; --muted:#566771; --faint:#8a99a2;
+  --lv-new:#9aa8b0; --lv-learn:#c07a00; --lv-dev:#2f6fd0; --lv-conf:#11897a; --lv-solid:#0c5e3e;
+  --lv-learn-bg:#fbefd9; --lv-dev-bg:#e1ebfa; --lv-conf-bg:#d9f1ec; --lv-solid-bg:#d5eadf;
+  --danger:#b3261e; --danger-soft:#fbe3e1;
+  --f-display:"Unbounded","Arial Rounded MT Bold",system-ui,sans-serif;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161b; --surface:#172129; --sunk:#111a20; --line:#2a3842; --ink:#e4ecf0; --muted:#9fb0ba; --faint:#6b7d88;
+  --lv-new:#64757f; --lv-learn:#e6a33a; --lv-dev:#6ea0f0; --lv-conf:#3cc3ad; --lv-solid:#6fd39a;
+  --lv-learn-bg:#3a2a10; --lv-dev-bg:#182a45; --lv-conf-bg:#0f3530; --lv-solid-bg:#143224;
+  --danger:#ff8a80; --danger-soft:#3d1c1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161b; --surface:#172129; --sunk:#111a20; --line:#2a3842; --ink:#e4ecf0; --muted:#9fb0ba; --faint:#6b7d88;
+  --lv-new:#64757f; --lv-learn:#e6a33a; --lv-dev:#6ea0f0; --lv-conf:#3cc3ad; --lv-solid:#6fd39a;
+  --lv-learn-bg:#3a2a10; --lv-dev-bg:#182a45; --lv-conf-bg:#0f3530; --lv-solid-bg:#143224;
+  --danger:#ff8a80; --danger-soft:#3d1c1a; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar{display:flex;align-items:center;gap:16px;padding-block:12px 0;flex-wrap:wrap}
+.brand{font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.brand svg{width:26px;height:26px;flex:none}
+.save-state{margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding-top:8px;scrollbar-width:none}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 9px;font-weight:600;color:var(--muted);white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding-block:20px 80px}
+h2{font-family:var(--f-display);font-weight:500;font-size:20px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:600}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:none}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.big{padding:12px 22px;font-size:16px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+select,input[type=text],input[type=number],textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;text-transform:none;letter-spacing:0;font-weight:500;min-width:0}
+textarea{resize:vertical}
+.ctx{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
+@media (max-width:720px){.ctx{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ctx-note{font-size:13px;color:var(--muted);margin-top:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.pill.l1{background:var(--lv-learn-bg);color:var(--lv-learn)}
+.pill.l2{background:var(--lv-dev-bg);color:var(--lv-dev)}
+.pill.l3{background:var(--lv-conf-bg);color:var(--lv-conf)}
+.pill.l4{background:var(--lv-solid-bg);color:var(--lv-solid)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:720px){.two{grid-template-columns:minmax(0,1fr)}}
+.banner{background:var(--accent-soft);border-radius:var(--r);padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.banner p{flex:1 1 260px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat b{display:block;font-family:var(--f-mono);font-size:24px;font-weight:500}
+.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.meter{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+.scrim{position:fixed;inset:0;background:rgba(10,16,20,.35);z-index:40}
+.drawer{position:fixed;z-index:41;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;
+  padding:calc(env(safe-area-inset-top,0px) + 18px) max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) 18px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:640px){.drawer{top:auto;left:0;width:100%;max-height:86vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding-left:max(18px,env(safe-area-inset-left,0px))}}
+.drawer .x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:max(12px,env(safe-area-inset-right,0px));background:var(--sunk);border:0;border-radius:999px;width:32px;height:32px;font-size:18px;line-height:1}
+@media (max-width:640px){.drawer .x{top:12px}}
+.drawer h2{padding-right:40px}
+.drawer ul,.cues{margin:0;padding-left:18px}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks label{display:inline-flex;align-items:center;gap:5px;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--sunk)}
+.entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:8px 0;border-top:1px solid var(--line)}
+.entry .meta{font-size:12px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.4}}}
+/* ===== end shared look ===== */
+/* Mind Palace accent: amber */
+:root{--accent:#9a6700;--accent-ink:#ffffff;--accent-soft:#f6ecd2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#f2c14e;--accent-ink:#2a1d00;--accent-soft:#33280f}}
+:root[data-theme="dark"]{--accent:#f2c14e;--accent-ink:#2a1d00;--accent-soft:#33280f}
+
+/* Branch colours: each main branch of a map gets one, and any idea can pick its own */
+:root{--b0:#2f6fd0;--b1:#c2306f;--b2:#2e7d32;--b3:#7442b8;--b4:#c2410c;--b5:#0b7285;--b6:#9a6700;--b7:#566771}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--b0:#6ea0f0;--b1:#f0679f;--b2:#6fd39a;--b3:#bb94ff;--b4:#fb8a4c;--b5:#5fd0e4;--b6:#f2c14e;--b7:#9fb0ba}}
+:root[data-theme="dark"]{--b0:#6ea0f0;--b1:#f0679f;--b2:#6fd39a;--b3:#bb94ff;--b4:#fb8a4c;--b5:#5fd0e4;--b6:#f2c14e;--b7:#9fb0ba}
+
+html,body{height:100%}
+body{display:flex;flex-direction:column;overflow:hidden;height:100dvh}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.picker{display:flex;align-items:center;gap:8px;min-width:0}
+.picker select{padding:5px 10px;font-size:14px;border-radius:999px;max-width:240px}
+nav.tabs .end{margin-left:auto}
+@media (min-width:900px){nav.tabs .phone{display:none}}
+
+main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr)}
+.pane{min-height:0;min-width:0;position:relative}
+.pane.outline{display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--line)}
+@media (max-width:899px){
+  main.split{grid-template-columns:minmax(0,1fr)}
+  main.split[data-view="map"] .pane.outline,main.split[data-view="outline"] .pane.map{display:none}
+  .pane.outline{border-right:0}
+}
+
+/* Toolbars */
+.tools{display:flex;gap:4px;align-items:center}
+.tools button{border:0;background:none;border-radius:8px;width:36px;height:38px;display:grid;place-items:center;color:var(--ink);flex:none}
+.tools button:hover{background:var(--sunk)}
+.tools button:disabled{opacity:.35;cursor:default;background:none}
+.tools button svg{width:20px;height:20px}
+.tools .sep{width:1px;height:22px;background:var(--line);margin:0 4px;flex:none}
+.otools{padding:6px max(8px,env(safe-area-inset-left,0px)) 6px 8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;background:var(--surface)}
+.ctools{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;box-shadow:0 6px 20px rgba(10,16,20,.12);max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+.ztools{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:12px;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;box-shadow:0 4px 14px rgba(10,16,20,.08)}
+.swatches{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);box-shadow:0 6px 20px rgba(10,16,20,.12);z-index:5}
+.swatches button{width:32px;height:32px;border-radius:999px;border:2px solid var(--surface);outline:1px solid var(--line);background:var(--sw)}
+.swatches button[aria-pressed="true"]{outline:2px solid var(--ink)}
+.swatches .auto{width:auto;padding:0 12px;background:var(--sunk);font-size:13px;font-weight:600;color:var(--ink)}
+
+/* Canvas */
+#canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--bg);outline:none;cursor:grab}
+#canvas.panning{cursor:grabbing}
+#canvas .dot{fill:var(--line)}
+.link{fill:none;stroke:var(--bc);stroke-width:2;stroke-linecap:round;opacity:.75}
+.link.l1{stroke-width:3.2}
+.node{cursor:pointer}
+.node rect.box{fill:var(--surface);stroke:var(--bc);stroke-width:1.5}
+.node text{fill:var(--ink);font:500 14px var(--f-body);text-anchor:middle;dominant-baseline:central}
+.node text.ph{fill:var(--faint)}
+.node.d1 rect.box{stroke-width:2.5}
+.node.d0 rect.box{fill:var(--accent);stroke:none}
+.node.d0 text{fill:var(--accent-ink);font-weight:600;font-size:17px}
+.node rect.ring{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-dasharray:5 4;display:none}
+.node.sel rect.ring{display:block}
+.node.d0.sel rect.ring{stroke:var(--ink)}
+.node.drop rect.box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:3}
+.node.drag{opacity:.8;pointer-events:none}
+.fold circle{fill:var(--surface);stroke:var(--bc);stroke-width:1.5}
+.fold text{font:600 11px var(--f-mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.editor{position:absolute;z-index:4;margin:0;resize:none;overflow:hidden;text-align:center;font:500 16px var(--f-body);line-height:1.3;padding:6px 10px;border:2px solid var(--accent);border-radius:9px;background:var(--surface);color:var(--ink);box-shadow:0 6px 20px rgba(10,16,20,.15)}
+
+/* Outline */
+.otree{flex:1;overflow:auto;padding:10px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(8px,env(safe-area-inset-left,0px));overscroll-behavior:contain}
+.otree ul{list-style:none;margin:0;padding:0}
+.otree ul ul{margin-left:17px;padding-left:6px;border-left:1px solid var(--line)}
+.orow{display:flex;align-items:center;gap:2px;border-radius:8px;padding-right:4px}
+.orow.sel{background:var(--accent-soft)}
+.orow .tw{border:0;background:none;width:26px;height:32px;display:grid;place-items:center;color:var(--muted);flex:none;padding:0}
+.orow .tw svg{width:14px;height:14px;transition:transform .12s}
+li[aria-expanded="false"]>.orow .tw svg{transform:rotate(-90deg)}
+.orow .bul{width:8px;height:8px;border-radius:999px;background:var(--bc);flex:none;margin-right:4px}
+li[aria-expanded="false"]>.orow .bul{box-shadow:0 0 0 3px color-mix(in srgb,var(--bc) 30%,transparent)}
+.orow{align-items:flex-start}
+.orow .tw{height:35px}
+.orow .bul{margin-top:13px}
+.orow textarea{flex:1;min-width:0;border:0;background:none;padding:6px 4px;font-size:16px;font-weight:500;line-height:1.4;border-radius:6px;resize:none;overflow:hidden;field-sizing:content;min-height:35px;display:block}
+.orow textarea:focus{outline:none}
+.orow textarea.root{font-family:var(--f-display);font-weight:500;font-size:18px}
+.otree>ul>li>.orow{margin-bottom:4px}
+.ohint{font-size:12px;color:var(--muted);padding:12px 8px 0;max-width:46ch}
+.ohint kbd{font-family:var(--f-mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--sunk)}
+@media (pointer:coarse){.ohint .keys{display:none}}
+
+.toast{display:flex;align-items:center;gap:12px}
+.toast button{background:none;border:1px solid currentColor;color:inherit;border-radius:999px;padding:2px 10px;font-weight:700;font-size:13px}
+.drawer textarea{min-height:140px;font-family:var(--f-mono);font-size:13px}
+.drawer .btn.wide{width:100%}
+.list{display:flex;flex-direction:column;gap:8px}
+.help dt{font-weight:600;margin-top:8px}
+.help dd{margin:0;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="topbar">
+      <a data-hub-link href="https://petravanta.github.io/general/">All apps</a>
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 16L6 8M16 16L6 24M16 16L26 9M16 16L26 23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="6" fill="var(--accent)"/><circle cx="5.5" cy="7.5" r="3.5" fill="var(--accent)" opacity=".55"/><circle cx="5.5" cy="24.5" r="3.5" fill="var(--accent)" opacity=".55"/><circle cx="26.5" cy="8.5" r="3.5" fill="var(--accent)" opacity=".55"/><circle cx="26.5" cy="23.5" r="3.5" fill="var(--accent)" opacity=".55"/></svg>
+        Mind Palace
+      </div>
+      <div class="picker">
+        <label class="sr-only" for="mapPick">Mind map</label>
+        <select id="mapPick"></select>
+      </div>
+      <span class="save-state" id="saveState">Saved in this browser</span>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button type="button" class="phone" data-tab="map">Map</button>
+      <button type="button" class="phone" data-tab="outline">Outline</button>
+      <button type="button" class="end" id="mapBtn">This map</button>
+      <button type="button" id="settingsBtn">Settings</button>
+    </nav>
+  </div>
+</header>
+<main class="split" id="main" data-view="map">
+  <section class="pane outline" aria-label="Outline">
+    <div class="tools otools" id="otools"></div>
+    <div class="otree" id="otree">
+      <ul id="outline" role="tree" aria-label="Outline of the map"></ul>
+      <p class="ohint"><span class="keys"><kbd>Enter</kbd> new idea · <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> move in or out · <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> reorder · </span>Changes here show on the map straight away.</p>
+    </div>
+  </section>
+  <section class="pane map" id="mapPane" aria-label="Map">
+    <svg id="canvas" tabindex="0" aria-label="Mind map canvas. Drag ideas to arrange them; drop one onto another to move it there.">
+      <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle class="dot" cx="1" cy="1" r="1"/></pattern></defs>
+      <rect width="100%" height="100%" fill="url(#grid)"/>
+      <g id="view"><g id="links"></g><g id="nodes"></g></g>
+    </svg>
+    <div class="tools ztools" id="ztools"></div>
+    <div class="tools ctools" id="ctools"></div>
+  </section>
+</main>
+<div id="layer"></div>
+<input type="file" id="fileIn" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" hidden>
+<script>
+'use strict';
+/* Mind Palace. A map is a tree of ideas: one central idea, each idea with an ordered list of sub-ideas.
+   Every idea also has a spot on the canvas (x, y), so the same tree shows two ways that stay in step:
+   the canvas, where ideas are dragged around (and dropped onto another idea to move them under it),
+   and the outline, where the hierarchy and the order are edited as text.
+   User data follows the "User data" section of petravanta/general STANDARDS.md. */
+
+/* Google Drive sync: the shared OAuth client for petravanta.github.io (see README). Leave empty to turn Drive off. */
+const GOOGLE_CLIENT_ID = '326863468616-4hf2conk0ks0s4qdva9tphphdo7ht7eh.apps.googleusercontent.com';
+const KEY = 'mindPalace.data', CUR_KEY = 'mindPalace.current', TAB_KEY = 'mindPalace.tab', VIEW_KEY = 'mindPalace.view';
+const LISTS = ['maps'];
+const COLORS = 8;
+const GAP_X = 56, GAP_Y = 12, GAP_TOP = 26, ROW = 46;   // spacing for Tidy up and for placing new ideas
+const FONT = '"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif';
+const DRIVE_API = 'https://www.googleapis.com';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const nid = () => Math.random().toString(36).slice(2, 10);
+const now = () => new Date().toISOString();
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const plural = (n, w, ws) => `${n} ${n === 1 ? w : (ws || w + 's')}`;
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+
+const ICON = {
+  child: '<path d="M4 5v6a3 3 0 0 0 3 3h5"/><rect x="13" y="11" width="7" height="6" rx="2"/><path d="M16.5 4v5M14 6.5h5"/>',
+  sibling: '<rect x="4" y="4" width="12" height="6" rx="2"/><rect x="4" y="14" width="12" height="6" rx="2" stroke-dasharray="2.5 2"/><path d="M20 14v6M17 17h6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  color: '<circle cx="12" cy="12" r="8"/><circle cx="9" cy="9.5" r="1.2" fill="currentColor"/><circle cx="14.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="16" cy="13" r="1.2" fill="currentColor"/><path d="M12 20a2 2 0 0 1 0-4h1.5"/>',
+  fold: '<path d="M6 9l6 6 6-6"/><path d="M6 4h12" opacity=".5"/>',
+  delete: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
+  indent: '<path d="M4 6h16M10 12h10M10 18h10"/><path d="M4 10l3 2-3 2"/>',
+  outdent: '<path d="M4 6h16M10 12h10M10 18h10"/><path d="M7 10l-3 2 3 2"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  zin: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/>',
+  zout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/>',
+  fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+  tidy: '<circle cx="6" cy="12" r="2.5"/><rect x="13" y="3.5" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="4" rx="1.5"/><rect x="13" y="16.5" width="7" height="4" rx="1.5"/><path d="M8.5 12H11M11 5.5v13M11 5.5h2M11 12h2M11 18.5h2"/>',
+  chev: '<path d="M6 9l6 6 6-6"/>'
+};
+const svgI = (k, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${ICON[k]}</svg>`;
+
+/* ---------- The document ---------- */
+// One record per map: { id, u, root, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
+//   a?: colour 0-7 the branch got when it became a main branch, f?: folded } }, gdoc?: id of the Google Doc saved from it }
+function blankDoc() { return { version: 1, settings: { updatedAt: now() }, maps: [], deleted: [] }; }
+function cleanMap(m) {
+  if (!m || typeof m !== 'object' || !m.id || !m.nodes || typeof m.nodes !== 'object' || !m.nodes[m.root]) return null;
+  const nodes = {}, seen = new Set();
+  (function walk(id) {
+    const n = m.nodes[id];
+    if (!n || seen.has(id)) return false;
+    seen.add(id);
+    const o = { t: typeof n.t === 'string' ? n.t.replace(/\s*\n\s*/g, ' ') : '', x: Number.isFinite(n.x) ? n.x : 0, y: Number.isFinite(n.y) ? n.y : 0, k: [] };
+    if (Number.isInteger(n.c) && n.c >= 0 && n.c < COLORS) o.c = n.c;
+    if (Number.isInteger(n.a) && n.a >= 0 && n.a < COLORS) o.a = n.a;
+    if (n.f) o.f = true;
+    nodes[id] = o;
+    for (const c of Array.isArray(n.k) ? n.k : []) if (walk(c)) o.k.push(c);
+    return true;
+  })(m.root);
+  const out = { id: m.id, u: m.u || '', root: m.root, nodes };
+  if (typeof m.gdoc === 'string') out.gdoc = m.gdoc;
+  return out;
+}
+function upgrade(d) {
+  if (!d || typeof d !== 'object') return blankDoc();
+  const out = { version: 1, settings: d.settings && typeof d.settings === 'object' ? d.settings : { updatedAt: '' }, deleted: Array.isArray(d.deleted) ? d.deleted.filter(x => typeof x === 'string') : [] };
+  out.maps = Array.isArray(d.maps) ? d.maps.map(cleanMap).filter(Boolean) : [];
+  return out;
+}
+// Records combine by id, the newer `u` wins; anything either side deleted stays deleted; newer settings win
+function mergeDocs(a, b) {
+  a = upgrade(a); b = upgrade(b);
+  const del = new Set([...a.deleted, ...b.deleted]);
+  const out = { version: 1, settings: (a.settings.updatedAt || '') >= (b.settings.updatedAt || '') ? a.settings : b.settings, deleted: [...del] };
+  for (const L of LISTS) {
+    const m = new Map();
+    for (const r of [...a[L], ...b[L]]) { const o = m.get(r.id); if (!o || (r.u || '') > (o.u || '')) m.set(r.id, r); }
+    out[L] = [...m.values()].filter(r => !del.has(r.id));
+  }
+  return out;
+}
+
+let doc = upgrade(lsGet(KEY));
+let curId = lsGet(CUR_KEY);
+let tab = lsGet(TAB_KEY) === 'outline' ? 'outline' : 'map';
+let sel = null;          // the selected idea, shared by the canvas and the outline
+let editing = null;      // the idea being typed into on the canvas
+let typingId = null;     // the outline row being typed into (one undo step per row visit)
+let gest = null;         // the drag, pan or pinch in progress
+let V = { x: 0, y: 0, k: 1 };
+let needFit = false;
+const hist = {};         // undo and redo per map, this session only
+
+function cur() { return doc.maps.find(m => m.id === curId) || null; }
+function setCurrent(id) {
+  curId = id; lsSet(CUR_KEY, id); sel = null;
+  const v = (lsGet(VIEW_KEY) || {})[id];
+  if (v && Number.isFinite(v.k)) { V = { x: v.x, y: v.y, k: v.k }; needFit = false; } else needFit = true;
+}
+let viewTimer;
+function saveView() {
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(() => { const all = lsGet(VIEW_KEY) || {}; all[curId] = V; for (const k in all) if (!doc.maps.some(m => m.id === k)) delete all[k]; lsSet(VIEW_KEY, all); }, 400);
+}
+function save() {
+  if (!lsSet(KEY, doc)) toast('This browser’s storage is full. Export a backup in Settings, or connect Google Drive.', 6000);
+  if (store.known) store.save(doc);
+  showSaveState();
+}
+function touchMap(m) { m.u = now(); return m; }
+function changed(m) { touchMap(m); save(); }
+const title = m => (m && m.nodes[m.root].t.trim()) || 'Untitled map';
+
+/* ---------- The tree ---------- */
+function parents(m) { const p = {}; for (const id in m.nodes) for (const c of m.nodes[id].k) p[c] = id; return p; }
+function subtree(m, id, out = []) { out.push(id); for (const c of m.nodes[id].k) subtree(m, c, out); return out; }
+function depthOf(par, id) { let d = 0; while (par[id]) { id = par[id]; d++; } return d; }
+// Each main branch takes the next colour; an idea with its own colour passes it to everything under it
+function colorOf(m, par, id) {
+  if (id === m.root) return null;
+  for (let x = id; x && x !== m.root; x = par[x]) {
+    if (m.nodes[x].c != null) return m.nodes[x].c;
+    if (par[x] === m.root) return m.nodes[x].a ?? m.nodes[m.root].k.indexOf(x) % COLORS;
+  }
+  return 0;
+}
+const colorVar = c => c == null ? 'var(--accent)' : `var(--b${c})`;
+function side(m, par, id) {
+  const p = par[id]; if (!p) return 1;
+  if (p === m.root) return m.nodes[id].x < m.nodes[p].x ? -1 : 1;
+  const g = par[p], P = m.nodes[p];
+  return (g ? Math.sign(P.x - m.nodes[g].x) : 0) || (m.nodes[id].x < P.x ? -1 : 1);
+}
+// A new main branch takes the colour fewest other main branches have, and keeps it when the branches are reordered
+function paint(m, id) {
+  const R = m.nodes[m.root]; if (!R.k.includes(id) || m.nodes[id].a != null) return;
+  const used = Array(COLORS).fill(0); R.k.forEach((k, i) => { if (k !== id) used[m.nodes[k].a ?? i % COLORS]++; });
+  m.nodes[id].a = used.indexOf(Math.min(...used));
+}
+function moveBy(m, id, dx, dy) { for (const s of subtree(m, id)) { m.nodes[s].x += dx; m.nodes[s].y += dy; } }
+
+// Puts a new (or moved) idea next to its parent: in the column of its siblings on the same side,
+// below `after` (nudging later siblings down) or at the end, or above them all with `first`
+function place(m, id, opt = {}) {
+  const par = parents(m), p = par[id], P = m.nodes[p], N = m.nodes[id], ps = size(m, p);
+  let dir;
+  if (opt.after && m.nodes[opt.after]) dir = side(m, par, opt.after);
+  else if (p === m.root) {
+    const others = P.k.filter(k => k !== id);
+    const right = others.filter(k => m.nodes[k].x >= P.x).length;
+    dir = right <= others.length - right ? 1 : -1;
+  } else dir = (par[p] ? Math.sign(P.x - m.nodes[par[p]].x) : 1) || 1;
+  const sibs = P.k.filter(k => k !== id && (Math.sign(m.nodes[k].x - P.x) || 1) === dir);
+  const w = size(m, id).w;
+  N.x = sibs.length ? sibs.reduce((a, k) => a + m.nodes[k].x - dir * size(m, k).w / 2, 0) / sibs.length + dir * w / 2
+                    : P.x + dir * (ps.w / 2 + GAP_X * (p === m.root ? 1.6 : 1) + w / 2);
+  if (opt.after && m.nodes[opt.after]) {
+    const A = m.nodes[opt.after];
+    N.y = A.y + ROW;
+    for (const k of sibs) if (k !== opt.after && m.nodes[k].y > A.y) moveBy(m, k, 0, ROW);
+  } else if (!sibs.length) N.y = P.y;
+  else if (opt.first) N.y = Math.min(...sibs.map(k => m.nodes[k].y)) - ROW;
+  else N.y = Math.max(...sibs.map(k => m.nodes[k].y)) + ROW;
+}
+// Moves a whole branch to where place() would put its top idea
+function relocate(m, id, opt) {
+  const N = m.nodes[id], x = N.x, y = N.y;
+  place(m, id, opt);
+  const dx = N.x - x, dy = N.y - y; N.x = x; N.y = y;
+  moveBy(m, id, dx, dy);
+}
+function addChild(m, pid, index) {
+  const P = m.nodes[pid], id = nid();
+  P.f = false;
+  m.nodes[id] = { t: '', x: P.x, y: P.y, k: [] };
+  if (index == null) P.k.push(id); else P.k.splice(index, 0, id);
+  place(m, id, { first: index === 0 && P.k.length > 1 });
+  paint(m, id);
+  return id;
+}
+function addSibling(m, id, before) {
+  const par = parents(m), p = par[id];
+  if (!p) return addChild(m, id, 0);
+  const k = m.nodes[p].k, i = k.indexOf(id), n = nid();
+  m.nodes[n] = { t: '', x: 0, y: 0, k: [] };
+  k.splice(before ? i : i + 1, 0, n);
+  if (before) { place(m, n, { after: id }); const N = m.nodes[n], A = m.nodes[id]; [N.y, A.y] = [A.y, N.y]; moveBy(m, id, 0, 0); }
+  else place(m, n, { after: id });
+  paint(m, n);
+  return n;
+}
+// Removes an idea and everything under it; returns the idea to select next
+function removeNode(m, id) {
+  const p = parents(m)[id]; if (!p) return id;
+  const k = m.nodes[p].k, i = k.indexOf(id);
+  k.splice(i, 1);
+  for (const s of subtree(m, id)) delete m.nodes[s];
+  return k[i] || k[i - 1] || p;
+}
+function indent(m, id) {
+  const p = parents(m)[id]; if (!p) return false;
+  const k = m.nodes[p].k, i = k.indexOf(id); if (i < 1) return false;
+  const np = k[i - 1]; k.splice(i, 1); m.nodes[np].k.push(id); m.nodes[np].f = false;
+  relocate(m, id);
+  return true;
+}
+function outdent(m, id) {
+  const par = parents(m), p = par[id], g = par[p]; if (!p || !g) return false;
+  const k = m.nodes[p].k; k.splice(k.indexOf(id), 1);
+  const gk = m.nodes[g].k; gk.splice(gk.indexOf(p) + 1, 0, id);
+  relocate(m, id, { after: p });
+  paint(m, id);
+  return true;
+}
+// Moves an idea up or down among its siblings; on the canvas the two branches swap places
+function shift(m, id, d) {
+  const p = parents(m)[id]; if (!p) return false;
+  const k = m.nodes[p].k, i = k.indexOf(id), j = i + d; if (j < 0 || j >= k.length) return false;
+  const o = k[j], A = m.nodes[id], B = m.nodes[o], dx = B.x - A.x, dy = B.y - A.y;
+  moveBy(m, id, dx, dy); moveBy(m, o, -dx, -dy);
+  [k[i], k[j]] = [k[j], k[i]];
+  return true;
+}
+function reparent(m, id, to) {
+  const par = parents(m), p = par[id];
+  if (!p || id === to || subtree(m, id).includes(to)) return false;
+  const k = m.nodes[p].k; k.splice(k.indexOf(id), 1);
+  m.nodes[to].k.push(id); m.nodes[to].f = false;
+  relocate(m, id);
+  paint(m, id);
+  return true;
+}
+// After a drag, the outline follows the canvas: sub-ideas top to bottom, main branches clockwise from 12 o'clock
+function resort(m, id) {
+  const p = parents(m)[id]; if (!p) return false;
+  const P = m.nodes[p], before = P.k.join();
+  const ang = k => { const a = Math.atan2(m.nodes[k].x - P.x, -(m.nodes[k].y - P.y)); return a < 0 ? a + 2 * Math.PI : a; };
+  P.k.sort(p === m.root ? (a, b) => ang(a) - ang(b) : (a, b) => m.nodes[a].y - m.nodes[b].y);
+  return P.k.join() !== before;
+}
+// Tidy up: main branches split between the right (top to bottom) and the left (bottom to top), each branch as a tree
+function tidy(m) {
+  const R = m.nodes[m.root], H = {};
+  const height = id => {
+    if (H[id] != null) return H[id];
+    const n = m.nodes[id], s = size(m, id);
+    const ch = n.k.length ? n.k.reduce((a, c) => a + height(c), 0) + GAP_Y * (n.k.length - 1) : 0;
+    return (H[id] = n.f ? s.h : Math.max(s.h, ch));
+  };
+  const lay = (id, x, top, dir) => {
+    const n = m.nodes[id], s = size(m, id), h = height(id);
+    n.x = x + dir * s.w / 2; n.y = top + h / 2;
+    const ch = n.k.reduce((a, c) => a + height(c), 0) + GAP_Y * Math.max(0, n.k.length - 1);
+    let y = n.f ? n.y - ch / 2 : top + (h - ch) / 2;
+    for (const c of n.k) { lay(c, x + dir * (s.w + GAP_X), y, dir); y += height(c) + GAP_Y; }
+  };
+  const kids = R.k, half = Math.ceil(kids.length / 2), rs = size(m, m.root);
+  for (const [list, dir] of [[kids.slice(0, half), 1], [kids.slice(half).reverse(), -1]]) {
+    const total = list.reduce((a, c) => a + height(c), 0) + GAP_TOP * Math.max(0, list.length - 1);
+    let y = R.y - total / 2;
+    for (const c of list) { lay(c, R.x + dir * (rs.w / 2 + GAP_X * 1.6), y, dir); y += height(c) + GAP_TOP; }
+  }
+}
+function visible(m) { const out = []; (function w(id) { out.push(id); if (!m.nodes[id].f) m.nodes[id].k.forEach(w); })(m.root); return out; }
+
+/* ---------- Undo ---------- */
+function H() { return hist[curId] || (hist[curId] = { u: [], r: [] }); }
+const snap = m => JSON.stringify({ root: m.root, nodes: m.nodes });
+function checkpoint() { const h = H(); h.u.push(snap(cur())); if (h.u.length > 200) h.u.shift(); h.r = []; }
+function restore(from, to) {
+  const m = cur(), h = H(); if (!m || !h[from].length) return toast(from === 'u' ? 'Nothing to undo' : 'Nothing to redo');
+  closeEditor(true);
+  h[to].push(snap(m)); Object.assign(m, JSON.parse(h[from].pop()));
+  typingId = null; if (sel && !m.nodes[sel]) sel = null;
+  changed(m); renderAll(document.activeElement && document.activeElement.closest && document.activeElement.closest('#outline') ? { id: sel || m.root, caret: 'end' } : null);
+}
+const undo = () => restore('u', 'r'), redo = () => restore('r', 'u');
+
+/* ---------- Measuring ideas ---------- */
+const mctx = document.createElement('canvas').getContext('2d');
+const MCACHE = new Map();
+function measure(t, root) {
+  const key = (root ? 'R' : 'n') + t;
+  if (MCACHE.has(key)) return MCACHE.get(key);
+  const fs = root ? 17 : 14, lh = root ? 22 : 18, max = root ? 260 : 220, px = root ? 18 : 12, py = root ? 12 : 7;
+  mctx.font = `${root ? 600 : 500} ${fs}px ${FONT}`;
+  const lines = [];
+  let line = '';
+  for (const word of (t.trim() || (root ? 'Central idea' : 'New idea')).split(/\s+/)) {
+    const test = line ? line + ' ' + word : word;
+    if (mctx.measureText(test).width <= max || !line) line = test; else { lines.push(line); line = word; }
+  }
+  lines.push(line);
+  const w = Math.max(root ? 120 : 64, ...lines.map(l => Math.min(max, mctx.measureText(l).width))) + px * 2;
+  const s = { w: Math.ceil(w), h: lines.length * lh + py * 2, lines, lh };
+  if (MCACHE.size > 3000) MCACHE.clear();
+  MCACHE.set(key, s);
+  return s;
+}
+const size = (m, id) => measure(m.nodes[id].t, id === m.root);
+
+/* ---------- The canvas ---------- */
+const svg = $('#canvas'), pane = $('#mapPane');
+function applyView() { $('#view').setAttribute('transform', `translate(${V.x} ${V.y}) scale(${V.k})`); $('#grid').setAttribute('patternTransform', `translate(${V.x} ${V.y}) scale(${V.k})`); }
+function linkPath(p, ps, c, cs) {
+  const dx = c.x - p.x, dy = c.y - p.y;
+  if (Math.abs(dx) < (ps.w + cs.w) / 2 + 8) {
+    const sy = dy > 0 ? 1 : -1, y1 = p.y + sy * ps.h / 2, y2 = c.y - sy * cs.h / 2, my = (y1 + y2) / 2;
+    return `M${p.x} ${y1}C${p.x} ${my} ${c.x} ${my} ${c.x} ${y2}`;
+  }
+  const sx = dx > 0 ? 1 : -1, x1 = p.x + sx * ps.w / 2, x2 = c.x - sx * cs.w / 2, mx = (x1 + x2) / 2;
+  return `M${x1} ${p.y}C${mx} ${p.y} ${mx} ${c.y} ${x2} ${c.y}`;
+}
+function renderCanvas() {
+  const m = cur(); if (!m) return;
+  const par = parents(m), ids = visible(m), drag = gest && gest.type === 'drag' && gest.moved ? new Set(gest.ids) : null;
+  let links = '', nodes = '';
+  for (const id of ids) {
+    const n = m.nodes[id], s = size(m, id), d = depthOf(par, id), c = colorOf(m, par, id), cls = ['node', 'd' + Math.min(d, 2)];
+    if (id === sel) cls.push('sel');
+    if (gest && gest.drop === id) cls.push('drop');
+    if (drag && drag.has(id)) cls.push('drag');
+    const p = par[id];
+    if (p) links += `<path class="link${p === m.root ? ' l1' : ''}" style="--bc:${colorVar(c)}" d="${linkPath(m.nodes[p], size(m, p), n, s)}"/>`;
+    const y0 = -(s.lines.length - 1) * s.lh / 2, rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
+    const text = s.lines.map((l, i) => `<tspan x="0" y="${y0 + i * s.lh}">${esc(l)}</tspan>`).join('');
+    const hidden = n.f && n.k.length ? subtree(m, id).length - 1 : 0, sd = side(m, par, id);
+    nodes += `<g class="${cls.join(' ')}" data-id="${id}" transform="translate(${n.x} ${n.y})" style="--bc:${colorVar(c)}">`
+      + `<rect class="ring" x="${-s.w / 2 - 5}" y="${-s.h / 2 - 5}" width="${s.w + 10}" height="${s.h + 10}" rx="${rx + 4}"/>`
+      + `<rect class="box" x="${-s.w / 2}" y="${-s.h / 2}" width="${s.w}" height="${s.h}" rx="${rx}"/>`
+      + `<text${n.t.trim() ? '' : ' class="ph"'}>${text}</text>`
+      + (hidden ? `<g class="fold" data-fold="${id}" transform="translate(${sd * (s.w / 2 + 14)} 0)"><circle r="11"/><text>${hidden > 99 ? '99+' : hidden}</text></g>` : '')
+      + '</g>';
+  }
+  $('#links').innerHTML = links;
+  $('#nodes').innerHTML = nodes;
+  applyView();
+  if (editing) placeEditor();
+}
+let rafPending = false;
+function renderCanvasSoon() { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; renderCanvas(); }); }
+function bounds(m) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const id of visible(m)) { const n = m.nodes[id], s = size(m, id); x0 = Math.min(x0, n.x - s.w / 2); x1 = Math.max(x1, n.x + s.w / 2); y0 = Math.min(y0, n.y - s.h / 2); y1 = Math.max(y1, n.y + s.h / 2); }
+  return { x0, y0, x1, y1 };
+}
+function fit() {
+  const m = cur(), r = pane.getBoundingClientRect(); if (!m) return;
+  if (!r.width || !r.height) { needFit = true; return; }
+  const b = bounds(m), bw = b.x1 - b.x0 + 60, bh = b.y1 - b.y0 + 60;
+  const k = Math.min((r.width - 70) / bw, (r.height - 90) / bh, 1.25);
+  // On a narrow screen a wide map would shrink past reading size: keep it readable around the central idea and let people pan
+  const narrow = k < 0.6 && r.width < 600, R = m.nodes[m.root];
+  V.k = clamp(narrow ? 0.6 : k, 0.2, 3);
+  V.x = r.width / 2 - (narrow ? R.x : (b.x0 + b.x1) / 2) * V.k - (narrow ? 0 : 10);
+  V.y = (r.height - 50) / 2 - (narrow ? R.y : (b.y0 + b.y1) / 2) * V.k;
+  needFit = false; applyView(); saveView(); if (editing) placeEditor();
+}
+function zoom(f, cx, cy) {
+  const r = pane.getBoundingClientRect();
+  if (cx == null) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
+  const k = clamp(V.k * f, 0.2, 3), wx = (cx - r.left - V.x) / V.k, wy = (cy - r.top - V.y) / V.k;
+  V.k = k; V.x = cx - r.left - wx * k; V.y = cy - r.top - wy * k;
+  applyView(); saveView(); if (editing) placeEditor();
+}
+// Pans just enough to bring an idea into view
+function reveal(id) {
+  const m = cur(), r = pane.getBoundingClientRect(); if (!m || !m.nodes[id] || !r.width) return;
+  const n = m.nodes[id], s = size(m, id), sx = n.x * V.k + V.x, sy = n.y * V.k + V.y, hw = s.w * V.k / 2 + 30, hh = s.h * V.k / 2 + 30;
+  let dx = 0, dy = 0;
+  if (sx - hw < 0) dx = hw - sx; else if (sx + hw > r.width - 56) dx = r.width - 56 - hw - sx;
+  if (sy - hh < 0) dy = hh - sy; else if (sy + hh > r.height - 80) dy = r.height - 80 - hh - sy;
+  if (dx || dy) { V.x += dx; V.y += dy; applyView(); saveView(); }
+}
+function toWorld(cx, cy) { const r = svg.getBoundingClientRect(); return { x: (cx - r.left - V.x) / V.k, y: (cy - r.top - V.y) / V.k }; }
+function hit(m, p, skip) {
+  let best = null;
+  for (const id of visible(m)) {
+    if (skip.has(id)) continue;
+    const n = m.nodes[id], s = size(m, id);
+    if (Math.abs(p.x - n.x) <= s.w / 2 + 6 && Math.abs(p.y - n.y) <= s.h / 2 + 6) best = id;
+  }
+  return best;
+}
+
+/* Taps, drags, pans and pinches all come through pointer events, so mouse, pen and touch work the same */
+const ptrs = new Map();
+let lastTap = { id: null, t: 0 };
+svg.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  if (editing) closeEditor(true);
+  closeSwatches();
+  try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2) {
+    if (gest && gest.type === 'drag' && gest.moved) endDrag(false);
+    const [a, b] = [...ptrs.values()];
+    gest = { type: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, v: { ...V } };
+    return;
+  }
+  if (ptrs.size > 2) return;
+  const fold = e.target.closest('[data-fold]'), g = e.target.closest('.node');
+  if (fold) gest = { type: 'fold', id: fold.dataset.fold };
+  else if (g) gest = { type: 'drag', id: g.dataset.id, sx: e.clientX, sy: e.clientY, moved: false };
+  else gest = { type: 'pan', sx: e.clientX, sy: e.clientY, v: { ...V }, moved: false };
+});
+svg.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId) || !gest) return;
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const m = cur(); if (!m) return;
+  if (gest.type === 'pinch') {
+    if (ptrs.size < 2) return;
+    const [a, b] = [...ptrs.values()], r = svg.getBoundingClientRect();
+    const k = clamp(gest.v.k * Math.hypot(a.x - b.x, a.y - b.y) / gest.d, 0.2, 3);
+    const wx = (gest.mx - r.left - gest.v.x) / gest.v.k, wy = (gest.my - r.top - gest.v.y) / gest.v.k, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    V = { k, x: mx - r.left - wx * k, y: my - r.top - wy * k };
+    return applyView();
+  }
+  const dx = e.clientX - gest.sx, dy = e.clientY - gest.sy;
+  if (gest.type === 'pan') {
+    if (!gest.moved && Math.hypot(dx, dy) < 4) return;
+    gest.moved = true; svg.classList.add('panning');
+    V.x = gest.v.x + dx; V.y = gest.v.y + dy; return applyView();
+  }
+  if (gest.type === 'drag') {
+    if (!m.nodes[gest.id]) { gest = null; return; }
+    if (!gest.moved) {
+      if (Math.hypot(dx, dy) < (e.pointerType === 'mouse' ? 4 : 8)) return;
+      checkpoint();
+      gest.moved = true; gest.ids = subtree(m, gest.id); gest.skip = new Set(gest.ids);
+      gest.orig = gest.ids.map(id => [id, m.nodes[id].x, m.nodes[id].y]); gest.w0 = toWorld(gest.sx, gest.sy);
+      sel = gest.id; markOutlineSel();
+    }
+    const w = toWorld(e.clientX, e.clientY), ox = w.x - gest.w0.x, oy = w.y - gest.w0.y;
+    for (const [id, x, y] of gest.orig) { m.nodes[id].x = x + ox; m.nodes[id].y = y + oy; }
+    gest.drop = gest.id === m.root ? null : hit(m, w, gest.skip);
+    renderCanvasSoon();
+  }
+});
+function endDrag(drop) {
+  const m = cur(), g = gest; gest = null;
+  if (!m || !m.nodes[g.id]) return;
+  let structural = false;
+  if (drop && g.drop && reparent(m, g.id, g.drop)) { structural = true; toast(`Moved under “${m.nodes[g.drop].t.trim() || 'New idea'}”`); }
+  else structural = resort(m, g.id);
+  changed(m);
+  if (structural) renderOutline(); else markOutlineSel();
+  renderCanvas();
+}
+function pointerEnd(e) {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  svg.classList.remove('panning');
+  if (!gest) return;
+  const m = cur(), g = gest;
+  if (g.type === 'pinch') { if (!ptrs.size) gest = null; return saveView(); }
+  if (g.type === 'fold') { gest = null; if (e.type === 'pointerup' && m && m.nodes[g.id]) { checkpoint(); m.nodes[g.id].f = false; changed(m); renderAll(); } return; }
+  if (g.type === 'pan') { gest = null; if (g.moved) return saveView(); if (e.type === 'pointerup') select(null, 'map'); return; }
+  if (g.type === 'drag') {
+    if (g.moved) return endDrag(e.type === 'pointerup');
+    gest = null;
+    if (e.type !== 'pointerup') return;
+    const t = Date.now(), again = lastTap.id === g.id && t - lastTap.t < 450;
+    lastTap = { id: g.id, t };
+    select(g.id, 'map');
+    if (again) { lastTap = { id: null, t: 0 }; openEditor(g.id); }
+  }
+}
+svg.addEventListener('pointerup', pointerEnd);
+svg.addEventListener('pointercancel', pointerEnd);
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (editing) closeEditor(true);
+  if (e.ctrlKey || e.metaKey) zoom(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+  else { V.x -= e.deltaX; V.y -= e.deltaY; applyView(); saveView(); }
+}, { passive: false });
+
+/* Typing on the canvas: a box over the idea */
+function placeEditor() {
+  const m = cur(), ta = editing && editing.ta; if (!m || !ta || !m.nodes[editing.id]) return;
+  const n = m.nodes[editing.id], s = size(m, editing.id);
+  const w = Math.max(180, s.w * V.k + 16);
+  ta.style.width = w + 'px';
+  ta.style.height = 'auto'; ta.style.height = Math.max(40, ta.scrollHeight + 4) + 'px';
+  ta.style.left = (n.x * V.k + V.x - w / 2) + 'px';
+  ta.style.top = (n.y * V.k + V.y - ta.offsetHeight / 2) + 'px';
+}
+function openEditor(id, isNew, first = null) {
+  const m = cur(); if (!m || !m.nodes[id]) return;
+  if (editing) closeEditor(true);
+  if (matchMedia('(max-width:899px)').matches && tab !== 'map') setTab('map');
+  sel = id; renderCanvas(); markOutlineSel(); reveal(id);
+  const ta = document.createElement('textarea');
+  ta.className = 'editor'; ta.rows = 1; ta.setAttribute('enterkeyhint', 'done'); ta.setAttribute('aria-label', 'Idea text');
+  ta.value = first != null ? first : m.nodes[id].t;
+  pane.appendChild(ta);
+  editing = { id, ta, orig: m.nodes[id].t, isNew: !!isNew, dirty: first != null };
+  placeEditor();
+  ta.focus();
+  if (first == null) ta.select(); else ta.setSelectionRange(ta.value.length, ta.value.length);
+  if (first != null) { if (!isNew) checkpoint(); m.nodes[id].t = ta.value; renderCanvas(); syncOutlineText(id); }
+  ta.oninput = () => {
+    const v = ta.value.replace(/\s*\n\s*/g, ' ');
+    if (v !== ta.value) ta.value = v;
+    if (!editing.dirty && !editing.isNew) checkpoint();
+    editing.dirty = true;
+    m.nodes[id].t = v; renderCanvasSoon(); syncOutlineText(id);
+    if (id === m.root) renderPicker();
+  };
+  ta.onkeydown = e => {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') { e.preventDefault(); closeEditor(true); if (e.shiftKey || !matchMedia('(pointer:fine)').matches) return; return act(id === m.root ? 'child' : 'sibling', 'map'); }
+    if (e.key === 'Tab') { e.preventDefault(); closeEditor(true); return act('child', 'map'); }
+    if (e.key === 'Escape') { e.preventDefault(); closeEditor(editing.isNew); }
+  };
+  ta.onblur = () => { if (editing && editing.ta === ta) closeEditor(true); };
+}
+function closeEditor(keep) {
+  if (!editing) return;
+  const { id, ta, orig, isNew, dirty } = editing, m = cur();
+  editing = null; ta.onblur = null; ta.remove();
+  if (!m || !m.nodes[id]) return;
+  const n = m.nodes[id];
+  if (!keep) n.t = orig;
+  if (isNew && !n.t.trim()) { const next = removeNode(m, id); H().u.pop(); sel = next; changed(m); renderAll(); svg.focus({ preventScroll: true }); return; }
+  n.t = n.t.trim();
+  if (dirty || isNew) changed(m);
+  renderAll();
+  if (matchMedia('(pointer:fine)').matches) svg.focus({ preventScroll: true });
+}
+
+/* ---------- The outline ---------- */
+function renderOutline(focus) {
+  const m = cur(); if (!m) { $('#outline').innerHTML = ''; return; }
+  const par = parents(m);
+  const li = (id, d) => {
+    const n = m.nodes[id], has = n.k.length > 0, open = !n.f;
+    return `<li role="treeitem" data-id="${id}" aria-level="${d + 1}"${has ? ` aria-expanded="${open}"` : ''}>`
+      + `<div class="orow${id === sel ? ' sel' : ''}" style="--bc:${colorVar(colorOf(m, par, id))}">`
+      + `<button type="button" class="tw" data-tw="${id}" tabindex="-1"${has ? ` aria-label="${open ? 'Fold' : 'Unfold'}"` : ' aria-hidden="true" disabled'}>${has ? svgI('chev') : ''}</button>`
+      + (d ? '<span class="bul"></span>' : '')
+      + `<textarea rows="1" class="ot${d ? '' : ' root'}" data-id="${id}" placeholder="${d ? 'New idea' : 'Central idea'}" enterkeyhint="next" autocomplete="off" spellcheck="true" aria-label="${d ? 'Idea' : 'Central idea'}">${esc(n.t)}</textarea></div>`
+      + (has && open ? `<ul role="group">${n.k.map(k => li(k, d + 1)).join('')}</ul>` : '') + '</li>';
+  };
+  $('#outline').innerHTML = li(m.root, 0);
+  growAll();
+  if (focus) focusRow(focus.id, focus.caret);
+}
+function rowInput(id) { return document.querySelector(`#outline textarea[data-id="${id}"]`); }
+// Rows wrap long ideas; browsers without field-sizing need the height set by hand
+const FIELD_SIZING = CSS.supports('field-sizing', 'content');
+function grow(el) { if (FIELD_SIZING || !el.offsetParent) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+function growAll() { if (!FIELD_SIZING) outline.querySelectorAll('textarea').forEach(grow); }
+// Up and down move between rows unless the caret has another wrapped line to go to in that direction
+function atEdge(el, up) {
+  const one = el.scrollHeight <= parseFloat(getComputedStyle(el).lineHeight) * 1.5 + 14;
+  return one || (up ? el.selectionStart === 0 : el.selectionEnd === el.value.length);
+}
+function focusRow(id, caret) {
+  const m = cur(); if (!m || !m.nodes[id]) return;
+  let inp = rowInput(id);
+  if (!inp) { // inside a folded branch: unfold its ancestors
+    const par = parents(m); for (let p = par[id]; p; p = par[p]) m.nodes[p].f = false;
+    renderOutline(); renderCanvas(); inp = rowInput(id); if (!inp) return;
+  }
+  inp.focus({ preventScroll: false });
+  const at = caret === 'end' || caret == null ? inp.value.length : clamp(caret, 0, inp.value.length);
+  try { inp.setSelectionRange(at, at); } catch (_) {}
+}
+function markOutlineSel() {
+  document.querySelectorAll('#outline .orow.sel').forEach(r => r.classList.remove('sel'));
+  const inp = sel && rowInput(sel);
+  if (inp) inp.parentElement.classList.add('sel');
+  updateTools();
+}
+function syncOutlineText(id) { const inp = rowInput(id), m = cur(); if (inp && m && document.activeElement !== inp) inp.value = m.nodes[id].t; }
+const outline = $('#outline');
+outline.addEventListener('focusin', e => {
+  const id = e.target.dataset && e.target.dataset.id; if (!id || e.target.tagName !== 'TEXTAREA') return;
+  if (typingId !== id) typingId = null;
+  if (sel !== id) { sel = id; markOutlineSel(); renderCanvas(); }
+  if (!matchMedia('(max-width:899px)').matches) reveal(id);
+});
+outline.addEventListener('focusout', e => {
+  const m = cur(), id = e.target.dataset && e.target.dataset.id;
+  if (m && id && m.nodes[id] && m.nodes[id].t !== m.nodes[id].t.trim()) { m.nodes[id].t = m.nodes[id].t.trim(); changed(m); renderCanvas(); }
+  typingId = null;
+});
+outline.addEventListener('input', e => {
+  const m = cur(), id = e.target.dataset.id; if (!m || !m.nodes[id]) return;
+  if (/\n/.test(e.target.value)) { const c = e.target.selectionStart; e.target.value = e.target.value.replace(/\s*\n\s*/g, ' '); e.target.setSelectionRange(c, c); }
+  if (typingId !== id) { checkpoint(); typingId = id; }
+  grow(e.target);
+  m.nodes[id].t = e.target.value; changed(m); renderCanvasSoon();
+  if (id === m.root) renderPicker();
+});
+outline.addEventListener('click', e => {
+  const b = e.target.closest('[data-tw]'); if (!b) return;
+  const m = cur(), id = b.dataset.tw; if (!m || !m.nodes[id] || !m.nodes[id].k.length) return;
+  checkpoint(); m.nodes[id].f = !m.nodes[id].f; sel = id; changed(m); renderAll({ id, caret: 'end' });
+});
+outline.addEventListener('keydown', e => {
+  const inp = e.target; if (inp.tagName !== 'TEXTAREA' || e.isComposing) return;
+  const m = cur(), id = inp.dataset.id; if (!m || !m.nodes[id]) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (e.key === 'Enter') {
+    e.preventDefault(); checkpoint(); typingId = null;
+    const n = m.nodes[id];
+    let created;
+    if (id === m.root || (n.k.length && !n.f && inp.selectionStart === inp.value.length)) created = addChild(m, id, 0);
+    else if (inp.selectionStart === 0 && inp.value) created = addSibling(m, id, true);
+    else created = addSibling(m, id);
+    sel = created; changed(m); return renderAll({ id: created, caret: 0 });
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault(); const caret = inp.selectionStart;
+    return act(e.shiftKey ? 'outdent' : 'indent', 'outline', caret);
+  }
+  if (e.key === 'Backspace' && !inp.value && id !== m.root && !m.nodes[id].k.length) {
+    e.preventDefault();
+    const rows = [...outline.querySelectorAll('textarea')], i = rows.indexOf(inp), prev = rows[i - 1];
+    checkpoint(); removeNode(m, id); sel = prev ? prev.dataset.id : m.root; changed(m);
+    return renderAll({ id: sel, caret: 'end' });
+  }
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (e.altKey || (mod && e.shiftKey))) { e.preventDefault(); return act(e.key === 'ArrowUp' ? 'up' : 'down', 'outline', inp.selectionStart); }
+  if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !mod && !e.shiftKey && atEdge(inp, e.key === 'ArrowUp')) {
+    const rows = [...outline.querySelectorAll('textarea')], i = rows.indexOf(inp), next = rows[i + (e.key === 'ArrowUp' ? -1 : 1)];
+    if (next) { e.preventDefault(); const c = inp.selectionStart; next.focus(); const at = Math.min(c, next.value.length); next.setSelectionRange(at, at); }
+    return;
+  }
+  if (mod && e.key === '.') { e.preventDefault(); return act('fold', 'outline'); }
+  if (mod && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
+  if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); return redo(); }
+});
+
+/* ---------- Toolbars ---------- */
+const TB = {
+  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout']]
+};
+function toolbar(el, list, from) {
+  el.innerHTML = list.map(b => b === '|' ? '<span class="sep"></span>' : `<button type="button" data-act="${b[0]}" data-from="${from}" title="${b[1]}" aria-label="${b[1]}">${svgI(b[0])}</button>`).join('');
+}
+toolbar($('#otools'), TB.outline, 'outline');
+toolbar($('#ctools'), TB.map, 'map');
+toolbar($('#ztools'), TB.zoom, 'map');
+function updateTools() {
+  const m = cur(), n = m && sel && m.nodes[sel], h = hist[curId], par = n ? parents(m) : {}, p = n && par[sel], k = p ? m.nodes[p].k : [];
+  const off = {
+    child: !n, sibling: !n, edit: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
+    indent: !p || k.indexOf(sel) < 1, outdent: !p || !par[p], up: !p || k.indexOf(sel) < 1, down: !p || k.indexOf(sel) === k.length - 1,
+    undo: !h || !h.u.length, redo: !h || !h.r.length
+  };
+  document.querySelectorAll('[data-act]').forEach(b => { if (b.dataset.act in off) b.disabled = off[b.dataset.act]; });
+}
+// Buttons in the outline toolbar keep the row's focus (and the phone keyboard) where it is
+$('#otools').addEventListener('pointerdown', e => { if (e.target.closest('button')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const inp = b.dataset.from === 'outline' && sel && rowInput(sel);
+  act(b.dataset.act, b.dataset.from, inp && document.activeElement === inp ? inp.selectionStart : 'end');
+});
+function act(a, from, caret = 'end') {
+  const m = cur(); if (!m) return;
+  const id = sel && m.nodes[sel] ? sel : null;
+  if (['child', 'sibling', 'edit', 'color', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
+  const keep = r => { if (!r) { H().u.pop(); return; } typingId = null; changed(m); renderAll(from === 'outline' ? { id, caret } : null); if (from === 'map') reveal(id); };
+  switch (a) {
+    case 'child': case 'sibling': {
+      checkpoint();
+      const n = a === 'child' ? addChild(m, id) : addSibling(m, id);
+      sel = n; changed(m);
+      if (from === 'outline') return renderAll({ id: n, caret: 0 });
+      renderAll(); return openEditor(n, true);
+    }
+    case 'edit': return from === 'outline' ? focusRow(id, 'end') : openEditor(id);
+    case 'color': return openSwatches(id);
+    case 'fold': if (id === m.root || !m.nodes[id].k.length) return; checkpoint(); m.nodes[id].f = !m.nodes[id].f; return keep(true);
+    case 'indent': checkpoint(); return keep(indent(m, id));
+    case 'outdent': checkpoint(); return keep(outdent(m, id));
+    case 'up': checkpoint(); return keep(shift(m, id, -1));
+    case 'down': checkpoint(); return keep(shift(m, id, 1));
+    case 'delete': {
+      if (id === m.root) return toast('The central idea stays. To remove the whole map, use This map → Delete map.');
+      checkpoint();
+      const count = subtree(m, id).length;
+      sel = removeNode(m, id); changed(m); renderAll(from === 'outline' ? { id: sel, caret: 'end' } : null);
+      return toast(count > 1 ? `Deleted ${count} ideas` : 'Deleted the idea', 5000, { label: 'Undo', run: undo });
+    }
+    case 'undo': return undo();
+    case 'redo': return redo();
+    case 'zin': return zoom(1.25);
+    case 'zout': return zoom(0.8);
+    case 'fit': return fit();
+    case 'tidy': checkpoint(); tidy(m); changed(m); renderAll(); return fit();
+  }
+}
+function select(id, from) {
+  sel = id; renderCanvas(); markOutlineSel();
+  if (from === 'map' && id) { const inp = rowInput(id); if (inp && !matchMedia('(max-width:899px)').matches) inp.scrollIntoView({ block: 'nearest' }); }
+}
+function openSwatches(id) {
+  closeSwatches();
+  const m = cur(), c = m.nodes[id].c;
+  const el = document.createElement('div');
+  el.className = 'swatches'; el.id = 'swatches'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Colour');
+  el.innerHTML = `<button type="button" class="auto" data-sw="" aria-pressed="${c == null}">Auto</button>` + Array.from({ length: COLORS }, (_, i) => `<button type="button" data-sw="${i}" style="--sw:var(--b${i})" aria-label="Colour ${i + 1}" aria-pressed="${c === i}"></button>`).join('');
+  el.onclick = e => {
+    const b = e.target.closest('[data-sw]'); if (!b) return;
+    checkpoint(); const n = m.nodes[id]; if (b.dataset.sw === '') delete n.c; else n.c = +b.dataset.sw;
+    changed(m); closeSwatches(); renderAll();
+  };
+  pane.appendChild(el);
+}
+function closeSwatches() { const s = $('#swatches'); if (s) s.remove(); }
+
+/* Keys on the canvas */
+svg.addEventListener('keydown', e => {
+  const m = cur(); if (!m || editing) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
+  if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); return redo(); }
+  if (e.key === '+' || e.key === '=') return zoom(1.25);
+  if (e.key === '-') return zoom(0.8);
+  if (!sel || !m.nodes[sel]) { if (/^Arrow/.test(e.key) || e.key === 'Enter') { e.preventDefault(); select(m.root, 'map'); } return; }
+  const par = parents(m), n = m.nodes[sel];
+  if (e.key === 'Tab' || e.key === 'Insert') { e.preventDefault(); return act('child', 'map'); }
+  if (e.key === 'Enter') { e.preventDefault(); return act(sel === m.root ? 'child' : 'sibling', 'map'); }
+  if (e.key === 'F2' || e.key === ' ') { e.preventDefault(); return openEditor(sel); }
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); return act('delete', 'map'); }
+  if (e.key === 'Escape') return select(null, 'map');
+  if (/^Arrow/.test(e.key)) {
+    e.preventDefault();
+    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return act(e.key === 'ArrowUp' ? 'up' : 'down', 'map');
+    const kids = n.f ? [] : n.k, p = par[sel], sd = side(m, par, sel);
+    let to = null;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      if (p) { const k = m.nodes[p].k.filter(x => side(m, par, x) === sd).sort((a, b) => m.nodes[a].y - m.nodes[b].y), i = k.indexOf(sel); to = k[i + (e.key === 'ArrowUp' ? -1 : 1)]; }
+    } else {
+      const outward = (e.key === 'ArrowRight' ? 1 : -1);
+      if (sel === m.root) to = kids.find(k => side(m, par, k) === outward);
+      else if (outward === sd) to = kids.slice().sort((a, b) => m.nodes[a].y - m.nodes[b].y)[0];
+      else to = p;
+    }
+    if (to) { select(to, 'map'); reveal(to); }
+    return;
+  }
+  if (e.key.length === 1 && !mod && !e.altKey) { e.preventDefault(); return openEditor(sel, false, e.key); }
+});
+
+/* ---------- Maps ---------- */
+function newMap(rootText, tree) {
+  const m = { id: uid(), u: now(), root: nid(), nodes: {} };
+  m.nodes[m.root] = { t: rootText || 'Central idea', x: 0, y: 0, k: [] };
+  const add = (pid, items) => { for (const it of items) { const id = nid(); m.nodes[id] = { t: it.t, x: 0, y: 0, k: [] }; m.nodes[pid].k.push(id); add(id, it.kids || []); } };
+  add(m.root, tree || []);
+  m.nodes[m.root].k.forEach((k, i) => { m.nodes[k].a = i % COLORS; });
+  tidy(m);
+  return m;
+}
+function welcomeMap() {
+  const m = newMap('My mind palace', [
+    { t: 'Drag ideas around', kids: [{ t: 'Drag an idea and its branch comes along' }, { t: 'Drop it onto another idea to move it there' }, { t: 'Drag the background to pan, pinch or Ctrl + scroll to zoom' }] },
+    { t: 'Add ideas', kids: [{ t: 'Select one, then + for a sub-idea' }, { t: 'Double-tap an idea to edit it' }] },
+    { t: 'Edit the outline', kids: [{ t: 'Same map, as a list you can type into' }, { t: 'Indent, outdent and reorder there' }] },
+    { t: 'Save it', kids: [{ t: 'Stays in this browser' }, { t: 'Connect Google Drive in Settings' }, { t: 'This map → Save as Google Doc' }] }
+  ]);
+  m.id = 'welcome';
+  return m;
+}
+function renderPicker() {
+  const p = $('#mapPick');
+  p.innerHTML = doc.maps.map(m => `<option value="${esc(m.id)}"${m.id === curId ? ' selected' : ''}>${esc(title(m))}</option>`).join('') + '<option value="+">+ New map…</option>';
+}
+$('#mapPick').onchange = e => {
+  if (e.target.value === '+') { renderPicker(); return newMapDrawer(); }
+  closeEditor(true); setCurrent(e.target.value); renderAll(); if (needFit) fit();
+};
+
+/* ---------- Outline text in and out ---------- */
+// Reads indented lists and Markdown headings ("# Title", "- idea", "  - sub-idea", "1. idea", tabs or spaces)
+function parseOutline(text) {
+  const items = [], stack = [];
+  for (const raw of String(text).replace(/\r/g, '').split('\n')) {
+    if (!raw.trim()) continue;
+    const ws = raw.match(/^[\t ]*/)[0].replace(/\t/g, '    ').length;
+    let line = raw.trim(), lvl;
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { lvl = h[1].length - 10; line = h[2]; }
+    else { lvl = ws; line = line.replace(/^([-*+•–]|\d+[.)])\s+/, '').replace(/^\[[ xX]\]\s+/, ''); }
+    line = line.replace(/\*\*(.+?)\*\*/g, '$1').trim();
+    if (!line) continue;
+    const it = { t: line, kids: [], lvl };
+    while (stack.length && stack[stack.length - 1].lvl >= lvl) stack.pop();
+    (stack.length ? stack[stack.length - 1].kids : items).push(it);
+    stack.push(it);
+  }
+  return items;
+}
+function mapFromText(text, fallback) {
+  const items = parseOutline(text);
+  if (!items.length) return null;
+  return items.length === 1 ? newMap(items[0].t, items[0].kids) : newMap(fallback || 'Imported map', items);
+}
+function toMarkdown(m) {
+  const lines = ['# ' + title(m), ''];
+  (function w(id, d) { for (const k of m.nodes[id].k) { lines.push('  '.repeat(d) + '- ' + (m.nodes[k].t || 'New idea')); w(k, d + 1); } })(m.root, 0);
+  return lines.join('\n') + '\n';
+}
+function toHTML(m) {
+  const list = id => { const k = m.nodes[id].k; return k.length ? '<ul>' + k.map(c => `<li>${esc(m.nodes[c].t || 'New idea')}${list(c)}</li>`).join('') + '</ul>' : ''; };
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title(m))}</title></head><body><h1>${esc(title(m))}</h1>${list(m.root)}</body></html>`;
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const fileName = s => (s.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Mind map').slice(0, 80);
+
+/* Save as Google Doc: the outline as a real Google Doc (headings and nested bullets) in the user's Drive.
+   The first save makes the doc; later saves of the same map update that doc in place. Uses the same drive.file
+   permission as Drive sync, so connecting here also turns sync on. */
+function driveToken() {
+  const t = GoogleToken.get(lsGet('mindPalace.drive.email') || GoogleToken.lastEmail);
+  return t && t.token;
+}
+async function saveGoogleDoc(m) {
+  if (!store.configured) return toast('Google Drive is turned off in this copy of the app.');
+  try {
+    if (!store.known || !store.data) { doc = mergeDocs(doc, await store.load(true)); lsSet(KEY, doc); store.save(doc); renderAll(); m = cur(); }
+    else if (!store.live()) await store.signIn();
+  } catch (e) { return toast(e && e.code === 'offline' ? 'You seem to be offline.' : 'Couldn’t connect to Google.'); }
+  const token = driveToken(); if (!token) return toast('Couldn’t connect to Google.');
+  const auth = { Authorization: 'Bearer ' + token }, html = toHTML(m), name = title(m);
+  toast('Saving to Google Docs…', 10000);
+  try {
+    let id = m.gdoc;
+    if (id) {
+      const r = await fetch(`${DRIVE_API}/drive/v3/files/${id}?fields=id,trashed`, { headers: auth });
+      if (!r.ok || (await r.json()).trashed) id = null;
+    }
+    const b = 'b' + Math.random().toString(36).slice(2);
+    const meta = id ? { name } : { name, mimeType: 'application/vnd.google-apps.document' };
+    const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${html}\r\n--${b}--`;
+    const r = await fetch(`${DRIVE_API}/upload/drive/v3/files${id ? '/' + id : ''}?uploadType=multipart&fields=id`, { method: id ? 'PATCH' : 'POST', headers: { ...auth, 'Content-Type': 'multipart/related; boundary=' + b }, body });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if (m.gdoc !== j.id) { m.gdoc = j.id; changed(m); }
+    const url = `https://docs.google.com/document/d/${j.id}/edit`;
+    toast('Saved to Google Docs', 8000, { label: 'Open', run: () => window.open(url, '_blank', 'noopener') });
+    return url;
+  } catch (e) { toast('Couldn’t save to Google Docs. Try again in a moment.'); }
+}
+
+/* ---------- Drawers ---------- */
+function openDrawer(title, inner, wire) {
+  closeEditor(true);
+  $('#layer').innerHTML = `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(title)}"><button class="x" type="button" data-close aria-label="Close">×</button><h2>${esc(title)}</h2>${inner}</aside>`;
+  $('#layer').querySelectorAll('[data-close]').forEach(b => b.onclick = closeDrawer);
+  const d = $('#layer .drawer');
+  if (wire) wire(d);
+  const f = d.querySelector('input,textarea,select'); if (f && matchMedia('(pointer:fine)').matches) f.focus();
+}
+function closeDrawer() { $('#layer').innerHTML = ''; }
+function wireDelete(btn, label, onDelete) {
+  if (!btn) return;
+  btn.dataset.label = btn.textContent;
+  btn.onclick = () => {
+    if (btn.dataset.armed) return onDelete();
+    btn.dataset.armed = '1'; btn.textContent = label;
+    setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = btn.dataset.label; } }, 4000);
+  };
+}
+function newMapDrawer() {
+  openDrawer('New map', `
+    <label class="field">Central idea<input type="text" id="nmTitle" placeholder="What is this map about?"></label>
+    <label class="field">Or paste an outline<textarea id="nmText" placeholder="# Trip to Japan&#10;- Tokyo&#10;  - Food&#10;  - Museums&#10;- Kyoto"></textarea></label>
+    <p class="small muted">Indented lists and Markdown headings become ideas and sub-ideas. Leave it empty to start with just the central idea.</p>
+    <div class="row"><button class="btn primary" type="button" id="nmGo">Create map</button><button class="btn ghost" type="button" data-close>Cancel</button></div>`, d => {
+    d.querySelector('[data-close]:not(.x)').onclick = closeDrawer;
+    d.querySelector('#nmGo').onclick = () => {
+      const t = d.querySelector('#nmTitle').value.trim(), text = d.querySelector('#nmText').value;
+      let m = text.trim() ? mapFromText(text, t) : null;
+      if (m && t && parseOutline(text).length === 1) m.nodes[m.root].t = t;
+      if (!m) m = newMap(t || 'Central idea');
+      addMap(m);
+      closeDrawer();
+      if (!text.trim()) { sel = m.root; renderAll(); if (!t) openEditor(m.root); }
+    };
+  });
+}
+function addMap(m) { doc.maps.push(m); setCurrent(m.id); save(); renderAll(); fit(); }
+function mapDrawer() {
+  const m = cur(); if (!m) return;
+  const n = Object.keys(m.nodes).length - 1;
+  openDrawer(title(m), `
+    <p class="small muted">${plural(n, 'idea')} · last changed ${m.u ? new Date(m.u).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'now'}</p>
+    <div class="list">
+      <h3>Save and share</h3>
+      <button class="btn primary wide" type="button" id="mdDoc">${m.gdoc ? 'Update the Google Doc' : 'Save as Google Doc'}</button>
+      ${m.gdoc ? `<a class="small" href="https://docs.google.com/document/d/${esc(m.gdoc)}/edit" target="_blank" rel="noopener">Open the Google Doc</a>` : ''}
+      <p class="small muted">Writes the outline to a Google Doc in your Drive, as a heading with nested bullets. Saving again updates the same doc.</p>
+      <div class="row"><button class="btn" type="button" id="mdMd">Download Markdown</button><button class="btn" type="button" id="mdCopy">Copy outline</button></div>
+      <h3>Layout</h3>
+      <div class="row"><button class="btn" type="button" id="mdTidy">Tidy up the layout</button><button class="btn" type="button" id="mdFit">Fit on screen</button></div>
+      <p class="small muted">Tidy up puts the main branches either side of the central idea in outline order. Undo puts your own layout back.</p>
+      <h3>Map</h3>
+      <div class="row"><button class="btn" type="button" id="mdDup">Duplicate</button><button class="btn danger" type="button" id="mdDel">Delete map</button></div>
+    </div>`, d => {
+    d.querySelector('#mdDoc').onclick = async () => { closeDrawer(); await saveGoogleDoc(m); };
+    d.querySelector('#mdMd').onclick = () => download(new Blob([toMarkdown(m)], { type: 'text/markdown' }), fileName(title(m)) + '.md');
+    d.querySelector('#mdCopy').onclick = async () => { try { await navigator.clipboard.writeText(toMarkdown(m)); toast('Outline copied'); } catch (e) { toast('Couldn’t copy here. Try Download Markdown.'); } };
+    d.querySelector('#mdTidy').onclick = () => { closeDrawer(); act('tidy', 'map'); };
+    d.querySelector('#mdFit').onclick = () => { closeDrawer(); if (matchMedia('(max-width:899px)').matches) setTab('map'); fit(); };
+    d.querySelector('#mdDup').onclick = () => { const c = JSON.parse(JSON.stringify(m)); c.id = uid(); c.u = now(); delete c.gdoc; c.nodes[c.root].t = title(m) + ' (copy)'; closeDrawer(); addMap(c); toast('Duplicated'); };
+    wireDelete(d.querySelector('#mdDel'), 'Tap again to delete', () => {
+      doc.maps = doc.maps.filter(x => x.id !== m.id); if (!doc.deleted.includes(m.id)) doc.deleted.push(m.id);
+      delete hist[m.id];
+      if (!doc.maps.length) doc.maps.push(newMap('Central idea'));
+      setCurrent(doc.maps[0].id); save(); closeDrawer(); renderAll(); if (needFit) fit(); toast('Map deleted');
+    });
+  });
+}
+function drivePanel() {
+  if (!store.configured) return '<p class="small muted">Drive sync is turned off in this copy of the app.</p>';
+  if (!store.known) return `<p class="small">Keep a copy of every map in your own Google Drive, in <b>${esc(store.file)}</b>, and use the same maps on your phone and computer. The app can only see files it created there.</p><div class="row"><button class="btn primary" type="button" data-drive="on">Connect Google Drive</button></div>`;
+  return `<p class="small">${esc(store.status())}. Everything goes to <b>${esc(store.file)}</b> in your Drive a moment after each change.</p>
+    <div class="row">${store.live() ? '' : '<button class="btn primary" type="button" data-drive="on">Reconnect</button>'}<button class="btn ghost" type="button" data-drive="off">Disconnect</button></div>`;
+}
+function wireDrive(el) {
+  el.querySelectorAll('[data-drive]').forEach(b => b.onclick = async () => {
+    if (b.dataset.drive === 'off') { store.signOut(); showSaveState(); refreshDrivePanel(); return toast('Disconnected. Your maps stay in this browser.'); }
+    try { const remote = await store.load(true); doc = mergeDocs(doc, remote); if (!cur() && doc.maps[0]) setCurrent(doc.maps[0].id); save(); renderAll(); toast('Connected to Google Drive'); }
+    catch (e) { toast(e && e.code === 'offline' ? 'You seem to be offline.' : 'Couldn’t connect to Google Drive.'); }
+  });
+}
+function refreshDrivePanel() { const dp = $('#drivePanel'); if (dp) { dp.innerHTML = drivePanel(); wireDrive(dp); } }
+function settingsDrawer() {
+  openDrawer('Settings', `
+    <section class="stack"><h3>Google Drive</h3><div id="drivePanel">${drivePanel()}</div></section>
+    <section class="stack"><h3>Backup and import</h3>
+      <p class="small muted">A backup holds every map. Importing one merges it with what’s here. You can also import a Markdown or text outline as a new map.</p>
+      <div class="row"><button class="btn" type="button" id="stExport">Export backup</button><button class="btn" type="button" id="stImport">Import…</button></div></section>
+    <section class="stack"><h3>How it works</h3>
+      <dl class="help small">
+        <dt>Map</dt><dd>Drag an idea to move it with everything under it. Drop it onto another idea to put it there. Drag the background to pan; pinch, or Ctrl + scroll, to zoom. Double-tap an idea to edit it.</dd>
+        <dt>Outline</dt><dd>The same map as a list. Type to edit, Enter adds an idea, Tab and Shift + Tab move it in and out a level, Alt + ↑ / ↓ reorder. On a phone, use the buttons above the list.</dd>
+        <dt>Keys on the map</dt><dd>Tab: sub-idea · Enter: idea next to this one · F2, Space or just start typing: edit · Arrows: move around · Delete: delete · Ctrl + Z: undo.</dd>
+      </dl></section>`, d => {
+    wireDrive(d.querySelector('#drivePanel'));
+    d.querySelector('#stExport').onclick = () => download(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }), `Mind Palace backup ${new Date().toISOString().slice(0, 10)}.json`);
+    d.querySelector('#stImport').onclick = () => $('#fileIn').click();
+  });
+}
+$('#fileIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const text = await f.text();
+  let data = null; try { data = JSON.parse(text); } catch (_) {}
+  if (data && Array.isArray(data.maps)) { doc = mergeDocs(doc, data); if (!cur() && doc.maps[0]) setCurrent(doc.maps[0].id); save(); closeDrawer(); renderAll(); return toast('Backup merged in'); }
+  if (data) return toast('That file isn’t a Mind Palace backup.');
+  const m = mapFromText(text, f.name.replace(/\.[^.]+$/, ''));
+  if (!m) return toast('Nothing to import in that file.');
+  closeDrawer(); addMap(m); toast('Imported as a new map');
+};
+
+/* ---------- Tabs (phone) ---------- */
+function setTab(t) {
+  tab = t; lsSet(TAB_KEY, t);
+  $('#main').dataset.view = t;
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  if (t === 'map') { renderCanvas(); if (needFit) fit(); } else growAll();
+}
+$('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); };
+$('#mapBtn').onclick = mapDrawer;
+$('#settingsBtn').onclick = settingsDrawer;
+
+function renderAll(focus) { renderPicker(); renderCanvas(); renderOutline(focus); updateTools(); }
+
+/* ===== Google sign-in shared by petravanta's apps =====
+   Canonical copy: https://github.com/petravanta/general/blob/main/shared/google-token.js (see STANDARDS.md, "Staying connected to Google Drive").
+   Every app lives on petravanta.github.io and uses the same OAuth client, so a Drive token one app gets works in all of them.
+   This keeps that token where every app can see it (localStorage key petravanta.google), one per Google account, so
+   reconnecting in one app reconnects them all, and an app only ever uses the token of the account it connected with.
+   Google gives a static site no refresh token: a token lasts an hour, and getting a new one opens Google's window,
+   which browsers only allow right after a tap. With the account's email as a hint, that window closes by itself. */
+const GoogleToken=(()=>{
+  const KEY='petravanta.google', SCOPE='https://www.googleapis.com/auth/drive.file';
+  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null')||{}}catch(e){return {}}};
+  const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
+  const subs=[];
+  // Another tab or app on this site got a token: let this one pick it up without a tap
+  window.addEventListener('storage',e=>{if(e.key===KEY) subs.forEach(f=>{try{f()}catch(_){}})});
+  function gis(){return new Promise((res,rej)=>{
+    if(window.google&&google.accounts&&google.accounts.oauth2) return res();
+    const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.onload=res; s.onerror=()=>rej({code:'offline'}); document.head.appendChild(s)})}
+  // A token for this account with time left on it, or null
+  function get(email){const t=email&&(read().tokens||{})[email]; return t&&t.exp>Date.now()?t:null}
+  // o: {clientId, hint:'email to suggest', prompt:'' | 'select_account' | 'consent'}. Call from a tap. Resolves {token, exp, email}.
+  function request(o){return new Promise(async(res,rej)=>{
+    try{await gis()}catch(e){return rej(e)}
+    google.accounts.oauth2.initTokenClient({client_id:o.clientId,scope:SCOPE,login_hint:o.hint||undefined,error_callback:rej,
+      callback:async r=>{
+        if(r.error) return rej(r);
+        const t={token:r.access_token,exp:Date.now()+(Number(r.expires_in||3600)-60)*1000};
+        // Which account it is, so the token is filed under the right one
+        let email='';
+        try{const j=await (await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)',{headers:{Authorization:'Bearer '+t.token}})).json(); email=(j.user&&j.user.emailAddress)||''}catch(e){}
+        if(!email) email=o.hint||'';
+        if(email){
+          const v=read(), now=Date.now(); v.tokens=v.tokens||{};
+          for(const k in v.tokens) if(!(v.tokens[k].exp>now)) delete v.tokens[k];
+          v.tokens[email]=t; v.last=email; write(v);
+        }
+        res({...t,email});
+      }
+    }).requestAccessToken({prompt:o.prompt||''});
+  })}
+  // Signing out on this browser. Google's permission stays, since the other apps and devices still use it.
+  function forget(email){const v=read(); if(v.tokens&&email) delete v.tokens[email]; write(v)}
+  return {get,request,forget,gis,onChange:f=>subs.push(f),get lastEmail(){return read().last||''}};
+})();
+/* ===== end Google sign-in ===== */
+/* ===== Drive store: petravanta's apps =====
+   Canonical copy: https://github.com/petravanta/general/blob/main/shared/drive-store.js (see STANDARDS.md, "Data lives in Google Drive").
+   Needs GoogleToken (shared/google-token.js) inlined above it.
+   Keeps an app's data in one JSON file in the user's Google Drive (drive.file scope: the app only sees files it created).
+   The browser keeps a copy of the last data, so the app opens straight away even when the hour-long Google sign-in has run out,
+   and changes that haven't reached Drive yet (for example while offline). The first tap after that reconnects, merges with
+   Drive's copy and saves. */
+function DriveStore(o){
+  // o: {clientId, file:'App data.json', app:'app-id', key:'localStorage prefix', empty:()=>data, merge:(remote,local)=>data,
+  //     onChange:()=>{}, onRemote:data=>{} (Drive's copy changed what the app shows)}
+  const API='https://www.googleapis.com';
+  const get=k=>{try{return JSON.parse(localStorage.getItem(o.key+'.'+k)||'null')}catch(e){return null}};
+  const put=(k,v)=>{try{v==null?localStorage.removeItem(o.key+'.'+k):localStorage.setItem(o.key+'.'+k,JSON.stringify(v));return true}catch(e){return false}};
+  const S={token:null,exp:0,email:get('email')||'',fileId:get('file'),known:!!get('known'),data:null,stale:false,busy:false,err:null,last:null,timer:null,ask:0};
+  // The app's own token from before tokens were shared; good until it runs out
+  const t=get('token'); if(t&&t.exp>Date.now()){S.token=t.token;S.exp=t.exp} put('token',null);
+  if(S.known){const c=get('copy')||get('pending'); if(c){S.data=c; S.stale=true}}
+  // Load Google's script now: if it only starts loading on the tap, the browser may block its window
+  if(o.clientId&&S.known) GoogleToken.gis().catch(()=>{});
+  const live=()=>{
+    const g=GoogleToken.get(S.email); if(g&&g.exp>S.exp){S.token=g.token;S.exp=g.exp}
+    return !!S.token&&Date.now()<S.exp;
+  };
+  const note=()=>{try{o.onChange&&o.onChange()}catch(e){}};
+  // Opens Google's window, so call this from a tap. For an account that already agreed, the window closes by itself.
+  // A first connect suggests the account the other apps use; after that, the account this app connected with.
+  async function signIn(){
+    const r=await GoogleToken.request({clientId:o.clientId,hint:S.email||(S.known?'':GoogleToken.lastEmail),prompt:S.known||GoogleToken.lastEmail?'':'consent'});
+    S.token=r.token; S.exp=r.exp; S.known=true; put('known',true);
+    if(r.email&&r.email!==S.email){S.email=r.email; put('email',r.email)}
+  }
+  async function call(path,opt={}){
+    if(!live()) throw {code:'expired'};
+    let r; try{r=await fetch(API+path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+S.token}})}catch(e){throw {code:'offline'}}
+    if(r.status===401){S.token=null; S.exp=0; GoogleToken.forget(S.email); throw {code:'expired'}}
+    if(!r.ok) throw {code:'http',status:r.status};
+    return r;
+  }
+  async function find(){
+    if(S.fileId){try{const j=await (await call(`/drive/v3/files/${S.fileId}?fields=id,trashed`)).json(); if(!j.trashed) return S.fileId}catch(e){if(e.code!=='http') throw e}}
+    const q=encodeURIComponent(`name='${o.file.replace(/'/g,"\\'")}' and trashed=false`);
+    const j=await (await call(`/drive/v3/files?q=${q}&orderBy=modifiedTime desc&fields=files(id)`)).json();
+    S.fileId=j.files&&j.files[0]?j.files[0].id:null; put('file',S.fileId); return S.fileId;
+  }
+  async function read(){const id=await find(); return id?(await call(`/drive/v3/files/${id}?alt=media`)).json():null}
+  async function write(data){
+    const body=JSON.stringify({app:o.app,saved:new Date().toISOString(),...data}), id=await find();
+    if(id){await call(`/upload/drive/v3/files/${id}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body});return}
+    const b='b'+Math.random().toString(36).slice(2), meta=JSON.stringify({name:o.file,mimeType:'application/json'});
+    const j=await (await call('/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},
+      body:`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`})).json();
+    S.fileId=j.id; put('file',j.id);
+  }
+  // Data opened from this browser's copy may be behind Drive's: merge Drive's in before writing over it
+  async function catchUp(){
+    if(!S.stale) return;
+    const remote=await read(); S.stale=false;
+    if(!remote) return;
+    const before=JSON.stringify(S.data); S.data=o.merge(remote,S.data); put('copy',S.data);
+    if(JSON.stringify(S.data)!==before) try{o.onRemote&&o.onRemote(S.data)}catch(e){}
+  }
+  async function flush(){
+    clearTimeout(S.timer); if(!S.data||S.busy) return;
+    if(!live()){note();return}
+    S.busy=true; note();
+    try{await catchUp(); await write(S.data); S.err=null; S.last=new Date(); put('pending',null)}
+    catch(e){S.err=e.code==='expired'?null:e.code==='offline'?'offline':'error'}
+    finally{S.busy=false; note()}
+  }
+  // Load: Drive's copy, merged with any changes this browser hadn't saved yet. Creates the file on first use.
+  async function load(interactive){
+    if(!live()){ if(!interactive) throw {code:'expired'}; await signIn() }
+    S.busy=true; note();
+    const pending=get('pending');
+    try{
+      const remote=await read();
+      let data=remote?o.merge(remote,o.empty()):o.empty();
+      if(pending) data=o.merge(pending,data);
+      S.data=data; S.stale=false; S.err=null; S.last=new Date(); put('copy',data);
+      if(!remote||pending){await write(data); put('pending',null)}
+      return data;
+    }catch(e){
+      // offline with unsaved changes: carry on from them; they go to Drive once the connection is back
+      if(e.code==='offline'&&pending){S.data=o.merge(pending,o.empty()); S.stale=true; S.err='offline'; return S.data}
+      S.err=e.code==='offline'?'offline':e.code==='expired'?null:'error'; throw e;
+    }finally{S.busy=false; note()}
+  }
+  // Pick up changes made on another device
+  async function refresh(){
+    if(!live()||S.busy||!S.data) return false;
+    try{const r=await read(); if(!r) return false; const before=JSON.stringify(S.data); S.data=o.merge(r,S.data); S.stale=false; put('copy',S.data); return JSON.stringify(S.data)!==before}
+    catch(e){return false}
+  }
+  function save(data){S.data=data; put('copy',data); if(!put('pending',data)) {/* storage full or blocked: Drive still gets it */} clearTimeout(S.timer); S.timer=setTimeout(flush,1500); note()}
+  function signOut(){
+    GoogleToken.forget(S.email);
+    S.token=null; S.exp=0; S.data=null; S.stale=false; S.email=''; ['known','file','pending','copy','email'].forEach(k=>put(k,null)); S.known=false; note();
+  }
+  // Tokens last an hour. Renew on a tap when it is close to running out or gone, then save anything waiting.
+  document.addEventListener('click',e=>{
+    if(!o.clientId||!S.known||e.target.closest('[data-drive]')) return;
+    live(); if(S.exp-Date.now()>10*60000||Date.now()-S.ask<60000) return;
+    S.ask=Date.now(); signIn().then(flush).catch(()=>note());
+  },true);
+  // Another app or tab reconnected this account: carry on with its token
+  GoogleToken.onChange(()=>{if(S.known&&S.data&&live()) flush(); else note()});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden') flush()});
+  window.addEventListener('online',()=>flush());
+  function status(){
+    if(!S.data) return '';
+    if(S.busy) return 'Saving to Google Drive…';
+    const waiting=!!get('pending');
+    if(S.err==='offline') return 'Offline · changes save to Drive when you’re back online';
+    if(S.err) return 'Couldn’t reach Google Drive · will retry';
+    if(!live()) return waiting?'Tap anywhere to save to Google Drive':'Tap anywhere to reconnect Google Drive';
+    if(waiting) return 'Saving to Google Drive…';
+    return 'Saved to Google Drive'+(S.last?' · '+S.last.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'');
+  }
+  return {load,save,flush,refresh,signIn,signOut,status,live,
+    get data(){return S.data}, get known(){return S.known}, get configured(){return !!o.clientId}, get file(){return o.file},
+    get needsTap(){return !!S.data&&!live()}};
+}
+/* ===== end Drive store ===== */
+const store = DriveStore({
+  clientId: GOOGLE_CLIENT_ID, file: 'Mind Palace data.json', app: 'mind-palace', key: 'mindPalace.drive',
+  empty: blankDoc, merge: (remote, local) => mergeDocs(local, remote),
+  onChange: () => { showSaveState(); refreshDrivePanel(); },
+  onRemote: data => remoteIn(data)
+});
+// Drive's copy came in: merge it, and redraw unless that would pull text out from under the person typing
+function remoteIn(data) {
+  doc = mergeDocs(doc, data); lsSet(KEY, doc);
+  if (!cur() && doc.maps[0]) setCurrent(doc.maps[0].id);
+  if (editing) return renderPicker();
+  const a = document.activeElement, inOutline = a && a.closest && a.closest('#outline');
+  renderAll(inOutline && sel ? { id: sel, caret: a.selectionStart } : null);
+}
+function showSaveState() { $('#saveState').textContent = store.known ? store.status() || 'Saved in this browser' : 'Saved in this browser'; }
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, ms = 2600, action) {
+  clearTimeout(toastTimer);
+  let t = $('.toast');
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg;
+  if (action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label; b.onclick = () => { t.remove(); action.run(); }; t.appendChild(b); }
+  toastTimer = setTimeout(() => t.remove(), ms);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('#layer').innerHTML) return closeDrawer();
+  if (e.key === 'Escape') closeSwatches();
+  // Undo from anywhere that isn't a text field (those handle it themselves)
+  const a = document.activeElement;
+  if ((e.ctrlKey || e.metaKey) && !/^(INPUT|TEXTAREA)$/.test(a && a.tagName) && a !== svg && !$('#layer').innerHTML) {
+    const k = e.key.toLowerCase();
+    if (k === 'z') { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
+    if (k === 'y') { e.preventDefault(); return redo(); }
+  }
+});
+addEventListener('storage', e => { if (e.key === KEY && !editing) { doc = upgrade(lsGet(KEY)); if (!cur() && doc.maps[0]) setCurrent(doc.maps[0].id); renderAll(); } });
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && store.known && store.live() && await store.refresh()) remoteIn(store.data);
+});
+addEventListener('resize', () => { if (editing) placeEditor(); if (needFit) fit(); });
+
+/* ---------- Start ---------- */
+(async () => {
+  if (store.known && store.data) doc = mergeDocs(doc, store.data);
+  if (!doc.maps.length) { doc.maps.push(welcomeMap()); lsSet(KEY, doc); }
+  setCurrent(cur() ? curId : doc.maps[0].id);
+  setTab(matchMedia('(max-width:899px)').matches ? tab : 'map');
+  $('#main').dataset.view = tab;
+  renderAll();
+  if (needFit) fit();
+  showSaveState();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { MCACHE.clear(); renderCanvas(); });
+  if (store.known && store.live()) {
+    try { doc = mergeDocs(doc, await store.load(false)); lsSet(KEY, doc); store.save(doc); remoteIn(doc); } catch (e) { showSaveState(); }
+  }
+})();
+</script>
+<script src="https://petravanta.github.io/general/shared/hub-link.js" defer></script>
+<script src="https://petravanta.github.io/general/shared/theme-switch.js" defer></script>
+<script>if('serviceWorker' in navigator&&/^(petravanta\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname))navigator.serviceWorker.register('sw.js').catch(function(){})</script>
+</body>
+</html>

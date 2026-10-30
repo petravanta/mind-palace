@@ -143,6 +143,7 @@ main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minm
 .tools button{border:0;background:none;border-radius:8px;width:36px;height:38px;display:grid;place-items:center;color:var(--ink);flex:none}
 .tools button:hover{background:var(--sunk)}
 .tools button:disabled{opacity:.35;cursor:default;background:none}
+.tools button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .tools button svg{width:20px;height:20px}
 .tools .sep{width:1px;height:22px;background:var(--line);margin:0 4px;flex:none}
 .otools{padding:6px max(8px,env(safe-area-inset-left,0px)) 6px 8px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;background:var(--surface)}
@@ -292,13 +293,14 @@ const ICON = {
   zin: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/>',
   zout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/>',
   fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+  auto: '<path d="M12 3l1.6 3.9L17.5 8.5l-3.9 1.6L12 14l-1.6-3.9L6.5 8.5l3.9-1.6z"/><path d="M18.5 14l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8zM6 15.5l.6 1.4 1.4.6-1.4.6L6 19.5l-.6-1.4-1.4-.6 1.4-.6z"/>',
   tidy: '<circle cx="6" cy="12" r="2.5"/><rect x="13" y="3.5" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="4" rx="1.5"/><rect x="13" y="16.5" width="7" height="4" rx="1.5"/><path d="M8.5 12H11M11 5.5v13M11 5.5h2M11 12h2M11 18.5h2"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
 const svgI = (k, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${ICON[k]}</svg>`;
 
 /* ---------- The document ---------- */
-// One record per map: { id, u, root, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
+// One record per map: { id, u, root, auto?: re-arrange whenever ideas overlap, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
 //   a?: colour 0-7 the branch got when it became a main branch, f?: folded } }, gdoc?: id of the Google Doc saved from it }
 function blankDoc() { return { version: 1, settings: { updatedAt: now() }, maps: [], deleted: [] }; }
 function cleanMap(m) {
@@ -318,6 +320,7 @@ function cleanMap(m) {
   })(m.root);
   const out = { id: m.id, u: m.u || '', root: m.root, nodes };
   if (typeof m.gdoc === 'string') out.gdoc = m.gdoc;
+  if (m.auto) out.auto = true;
   return out;
 }
 function upgrade(d) {
@@ -367,7 +370,8 @@ function save() {
   showSaveState();
 }
 function touchMap(m) { m.u = now(); return m; }
-function changed(m) { touchMap(m); save(); }
+// With Auto-arrange on, any change that leaves ideas overlapping lays the whole map out again
+function changed(m, noAuto) { if (m.auto && !noAuto && overlapping(m)) tidy(m); touchMap(m); save(); }
 const title = m => (m && m.nodes[m.root].t.trim()) || 'Untitled map';
 
 /* ---------- The tree ---------- */
@@ -520,6 +524,15 @@ function tidy(m) {
     for (const c of list) { lay(c, R.x + dir * (rs.w / 2 + GAP_X * 1.6), y, dir); y += height(c) + GAP_TOP; }
   }
 }
+// Do any two ideas on screen overlap (with a little breathing room)?
+function overlapping(m) {
+  const boxes = visible(m).map(id => { const n = m.nodes[id], s = size(m, id); return [n.x - s.w / 2 - 4, n.y - s.h / 2 - 3, n.x + s.w / 2 + 4, n.y + s.h / 2 + 3]; })
+    .sort((a, b) => a[0] - b[0]);
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length && boxes[j][0] < boxes[i][2]; j++)
+      if (boxes[j][1] < boxes[i][3] && boxes[j][3] > boxes[i][1]) return true;
+  return false;
+}
 function visible(m) { const out = []; (function w(id) { out.push(id); if (!m.nodes[id].f) m.nodes[id].k.forEach(w); })(m.root); return out; }
 
 /* ---------- Undo ---------- */
@@ -531,7 +544,7 @@ function restore(from, to) {
   closeEditor(true);
   h[to].push(snap(m)); Object.assign(m, JSON.parse(h[from].pop()));
   typingId = null; if (sel && !m.nodes[sel]) sel = null;
-  changed(m); renderAll(document.activeElement && document.activeElement.closest && document.activeElement.closest('#outline') ? { id: sel || m.root, caret: 'end' } : null);
+  changed(m, true); renderAll(document.activeElement && document.activeElement.closest && document.activeElement.closest('#outline') ? { id: sel || m.root, caret: 'end' } : null);
 }
 const undo = () => restore('u', 'r'), redo = () => restore('r', 'u');
 
@@ -896,7 +909,7 @@ outline.addEventListener('keydown', e => {
 const TB = {
   outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
   map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
-  zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout']]
+  zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout'], ['auto', 'Auto-arrange: tidy up whenever ideas overlap']]
 };
 function toolbar(el, list, from) {
   el.innerHTML = list.map(b => b === '|' ? '<span class="sep"></span>' : `<button type="button" data-act="${b[0]}" data-from="${from}" title="${b[1]}" aria-label="${b[1]}">${svgI(b[0])}</button>`).join('');
@@ -912,6 +925,7 @@ function updateTools() {
     undo: !h || !h.u.length, redo: !h || !h.r.length
   };
   document.querySelectorAll('[data-act]').forEach(b => { if (b.dataset.act in off) b.disabled = off[b.dataset.act]; });
+  const ab = $('#ztools [data-act="auto"]'); if (ab) ab.setAttribute('aria-pressed', String(!!(m && m.auto)));
 }
 // Buttons in the outline toolbar keep the row's focus (and the phone keyboard) where it is
 $('#otools').addEventListener('pointerdown', e => { if (e.target.closest('button')) e.preventDefault(); });
@@ -953,6 +967,13 @@ function act(a, from, caret = 'end') {
     case 'zout': return zoom(0.8);
     case 'fit': return fit();
     case 'tidy': checkpoint(); tidy(m); changed(m); renderAll(); return fit();
+    case 'auto': {
+      m.auto = !m.auto; if (!m.auto) delete m.auto;
+      const moved = m.auto && overlapping(m);
+      if (moved) checkpoint();
+      changed(m); renderAll(); if (moved) fit();
+      return toast(m.auto ? 'Auto-arrange on: the map tidies itself whenever ideas overlap' : 'Auto-arrange off: ideas stay where you put them', 3500);
+    }
   }
 }
 function select(id, from) {
@@ -1166,6 +1187,7 @@ function mapDrawer() {
       <h3>Layout</h3>
       <div class="row"><button class="btn" type="button" id="mdTidy">Tidy up the layout</button><button class="btn" type="button" id="mdFit">Fit on screen</button></div>
       <p class="small muted">Tidy up puts the main branches either side of the central idea in outline order. Undo puts your own layout back.</p>
+      <label class="row small"><input type="checkbox" id="mdAuto"${m.auto ? ' checked' : ''}> <span><b>Auto-arrange.</b> Tidy up by itself whenever ideas overlap, as you add, move or type. You can still drag ideas: where you drop one among its siblings sets its order.</span></label>
       <h3>Map</h3>
       <div class="row"><button class="btn" type="button" id="mdDup">Duplicate</button><button class="btn danger" type="button" id="mdDel">Delete map</button></div>
     </div>`, d => {
@@ -1173,6 +1195,7 @@ function mapDrawer() {
     d.querySelector('#mdMd').onclick = () => download(new Blob([toMarkdown(m)], { type: 'text/markdown' }), fileName(title(m)) + '.md');
     d.querySelector('#mdCopy').onclick = async () => { try { await navigator.clipboard.writeText(toMarkdown(m)); toast('Outline copied'); } catch (e) { toast('Couldn’t copy here. Try Download Markdown.'); } };
     d.querySelector('#mdTidy').onclick = () => { closeDrawer(); act('tidy', 'map'); };
+    d.querySelector('#mdAuto').onchange = () => act('auto', 'map');
     d.querySelector('#mdFit').onclick = () => { closeDrawer(); if (matchMedia('(max-width:899px)').matches) setTab('map'); fit(); };
     d.querySelector('#mdDup').onclick = () => { const c = JSON.parse(JSON.stringify(m)); c.id = uid(); c.u = now(); delete c.gdoc; c.nodes[c.root].t = title(m) + ' (copy)'; closeDrawer(); addMap(c); toast('Duplicated'); };
     wireDelete(d.querySelector('#mdDel'), 'Tap again to delete', () => {

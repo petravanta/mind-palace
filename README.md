@@ -14,7 +14,7 @@ Mind maps you lay out by hand. Drag ideas around a canvas, and edit the same map
 ## What it does
 
 - **One tree, two views.** The canvas and the outline edit the same data, so a change in either shows in the other straight away, and selecting an idea in one selects it in the other.
-- **Your layout stays yours.** Ideas stay where you drag them. New ideas go next to their parent, in line with their siblings. *Tidy up* lays the whole map out neatly (main branches split either side of the central idea, in outline order), and undo puts your own layout back.
+- **Your layout stays yours.** Ideas stay where you drag them. New ideas go next to their parent, in line with their siblings. *Tidy up* lays the whole map out neatly (main branches split either side of the central idea, in outline order), and undo puts your own layout back. Turn on **Auto-arrange** (the sparkle button by the zoom controls, or *This map*) and the map tidies itself whenever ideas would overlap, as you add, move or type; you can still drag ideas, and where you drop one among its siblings sets its order. The setting is saved with each map.
 - **The outline follows the canvas.** After you drag an idea, its siblings are put in canvas order: top to bottom, and main branches clockwise from 12 o'clock. Moving an idea up or down in the outline swaps it with its neighbour on the canvas too.
 - **Branch colours.** Each main branch gets its own colour and keeps it when branches are reordered; any idea can pick its own colour, which everything under it shares.
 - **Fold** a branch to hide what's under it (in both views); the map shows how many ideas are hidden.

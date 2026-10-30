@@ -179,6 +179,21 @@ main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minm
 /* Outline */
 .otree{flex:1;overflow:auto;padding:10px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(8px,env(safe-area-inset-left,0px));overscroll-behavior:contain}
 .otree ul{list-style:none;margin:0;padding:0}
+.node image.pic{clip-path:inset(0 round 6px)}
+.orow .othumb{flex:none;border:0;padding:0;background:none;margin:3px 4px 0 0;width:30px;height:30px;border-radius:6px;overflow:hidden;outline:1px solid var(--line)}
+.orow .othumb img{width:100%;height:100%;object-fit:cover;display:block}
+.dropzone{position:fixed;inset:0;z-index:70;background:color-mix(in srgb,var(--accent) 16%,transparent);border:3px dashed var(--accent);display:grid;place-items:center;pointer-events:none;padding:24px}
+.dropzone p{background:var(--surface);color:var(--ink);border-radius:999px;padding:12px 22px;font-weight:600;box-shadow:0 6px 20px rgba(10,16,20,.15);text-align:center;max-width:min(520px,100%)}
+.picnow{display:flex;gap:12px;align-items:center}
+.picnow img{width:96px;height:72px;object-fit:cover;border-radius:8px;outline:1px solid var(--line)}
+.picgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.picgrid button{border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:0;overflow:hidden;aspect-ratio:4/3;position:relative}
+.picgrid button:hover{border-color:var(--accent)}
+.picgrid img{width:100%;height:100%;object-fit:cover;display:block}
+.picgrid button[aria-busy="true"]{opacity:.5}
+.picgrid p{grid-column:1/-1}
+.searchrow{display:flex;gap:8px}
+.searchrow input{flex:1}
 .otree ul ul{margin-left:17px;padding-left:6px;border-left:1px solid var(--line)}
 .orow{display:flex;align-items:center;gap:2px;border-radius:8px;padding-right:4px}
 .orow.sel{background:var(--accent-soft)}
@@ -266,6 +281,8 @@ const COLORS = 8;
 const GAP_X = 56, GAP_Y = 12, GAP_TOP = 26, ROW = 46;   // spacing for Tidy up and for placing new ideas
 const FONT = '"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif';
 const DRIVE_API = 'https://www.googleapis.com';
+const IMG_MAX = 240;              // longest side of a stored picture, in pixels
+const THUMB_W = 150, THUMB_H = 100; // largest a picture shows on the map
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -294,6 +311,7 @@ const ICON = {
   zout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/>',
   fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
   auto: '<path d="M12 3l1.6 3.9L17.5 8.5l-3.9 1.6L12 14l-1.6-3.9L6.5 8.5l3.9-1.6z"/><path d="M18.5 14l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8zM6 15.5l.6 1.4 1.4.6-1.4.6L6 19.5l-.6-1.4-1.4-.6 1.4-.6z"/>',
+  image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>',
   tidy: '<circle cx="6" cy="12" r="2.5"/><rect x="13" y="3.5" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="4" rx="1.5"/><rect x="13" y="16.5" width="7" height="4" rx="1.5"/><path d="M8.5 12H11M11 5.5v13M11 5.5h2M11 12h2M11 18.5h2"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
 };
@@ -301,7 +319,14 @@ const svgI = (k, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="cu
 
 /* ---------- The document ---------- */
 // One record per map: { id, u, root, auto?: re-arrange whenever ideas overlap, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
-//   a?: colour 0-7 the branch got when it became a main branch, f?: folded } }, gdoc?: id of the Google Doc saved from it }
+//   a?: colour 0-7 the branch got when it became a main branch, f?: folded, i?: picture (cleanImage) } }, gdoc?: id of the Google Doc saved from it }
+// An idea's picture: { s: a small data: URL (made by shrinkImage), w, h: its pixel size, c?: credit line }
+function cleanImage(i) {
+  if (!i || typeof i !== 'object' || typeof i.s !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(i.s) || i.s.length > 400000) return null;
+  const o = { s: i.s, w: clamp(+i.w || IMG_MAX, 8, IMG_MAX), h: clamp(+i.h || IMG_MAX, 8, IMG_MAX) };
+  if (typeof i.c === 'string' && i.c.trim()) o.c = i.c.trim().slice(0, 300);
+  return o;
+}
 function blankDoc() { return { version: 1, settings: { updatedAt: now() }, maps: [], deleted: [] }; }
 function cleanMap(m) {
   if (!m || typeof m !== 'object' || !m.id || !m.nodes || typeof m.nodes !== 'object' || !m.nodes[m.root]) return null;
@@ -314,6 +339,7 @@ function cleanMap(m) {
     if (Number.isInteger(n.c) && n.c >= 0 && n.c < COLORS) o.c = n.c;
     if (Number.isInteger(n.a) && n.a >= 0 && n.a < COLORS) o.a = n.a;
     if (n.f) o.f = true;
+    const im = cleanImage(n.i); if (im) o.i = im;
     nodes[id] = o;
     for (const c of Array.isArray(n.k) ? n.k : []) if (walk(c)) o.k.push(c);
     return true;
@@ -569,7 +595,14 @@ function measure(t, root) {
   MCACHE.set(key, s);
   return s;
 }
-const size = (m, id) => measure(m.nodes[id].t, id === m.root);
+// An idea with a picture shows it above its text (or alone, when the idea has no text)
+function thumb(i) { const k = Math.min(THUMB_W / i.w, THUMB_H / i.h, 1); return { w: Math.round(i.w * k), h: Math.round(i.h * k) }; }
+function size(m, id) {
+  const n = m.nodes[id], root = id === m.root, s = measure(n.t, root);
+  if (!n.i) return s;
+  const d = thumb(n.i), px = root ? 18 : 12, py = root ? 12 : 7, bare = !n.t.trim();
+  return { ...s, w: Math.max(bare ? 0 : s.w, d.w + 16), h: (bare ? py * 2 - 8 : s.h + 6) + d.h, img: d, bare, py: bare ? 4 : py, lines: bare ? [] : s.lines };
+}
 
 /* ---------- The canvas ---------- */
 const svg = $('#canvas'), pane = $('#mapPane');
@@ -594,13 +627,14 @@ function renderCanvas() {
     if (drag && drag.has(id)) cls.push('drag');
     const p = par[id];
     if (p) links += `<path class="link${p === m.root ? ' l1' : ''}" style="--bc:${colorVar(c)}" d="${linkPath(m.nodes[p], size(m, p), n, s)}"/>`;
-    const y0 = -(s.lines.length - 1) * s.lh / 2, rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
+    const y0 = -(s.lines.length - 1) * s.lh / 2 + (s.img ? (s.img.h + 6) / 2 : 0), rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
     const text = s.lines.map((l, i) => `<tspan x="0" y="${y0 + i * s.lh}">${esc(l)}</tspan>`).join('');
     const hidden = n.f && n.k.length ? subtree(m, id).length - 1 : 0, sd = side(m, par, id);
     nodes += `<g class="${cls.join(' ')}" data-id="${id}" transform="translate(${n.x} ${n.y})" style="--bc:${colorVar(c)}">`
       + `<rect class="ring" x="${-s.w / 2 - 5}" y="${-s.h / 2 - 5}" width="${s.w + 10}" height="${s.h + 10}" rx="${rx + 4}"/>`
       + `<rect class="box" x="${-s.w / 2}" y="${-s.h / 2}" width="${s.w}" height="${s.h}" rx="${rx}"/>`
-      + `<text${n.t.trim() ? '' : ' class="ph"'}>${text}</text>`
+      + (s.img ? `<image class="pic" href="${n.i.s}" x="${-s.img.w / 2}" y="${-s.h / 2 + s.py}" width="${s.img.w}" height="${s.img.h}" preserveAspectRatio="xMidYMid slice"/>` : '')
+      + (s.lines.length ? `<text${n.t.trim() ? '' : ' class="ph"'}>${text}</text>` : '')
       + (hidden ? `<g class="fold" data-fold="${id}" transform="translate(${sd * (s.w / 2 + 14)} 0)"><circle r="11"/><text>${hidden > 99 ? '99+' : hidden}</text></g>` : '')
       + '</g>';
   }
@@ -811,6 +845,7 @@ function renderOutline(focus) {
       + `<div class="orow${id === sel ? ' sel' : ''}" style="--bc:${colorVar(colorOf(m, par, id))}">`
       + `<button type="button" class="tw" data-tw="${id}" tabindex="-1"${has ? ` aria-label="${open ? 'Fold' : 'Unfold'}"` : ' aria-hidden="true" disabled'}>${has ? svgI('chev') : ''}</button>`
       + (d ? '<span class="bul"></span>' : '')
+      + (n.i ? `<button type="button" class="othumb" data-pic="${id}" tabindex="-1" aria-label="Picture"><img src="${n.i.s}" alt=""></button>` : '')
       + `<textarea rows="1" class="ot${d ? '' : ' root'}" data-id="${id}" placeholder="${d ? 'New idea' : 'Central idea'}" enterkeyhint="next" autocomplete="off" spellcheck="true" aria-label="${d ? 'Idea' : 'Central idea'}">${esc(n.t)}</textarea></div>`
       + (has && open ? `<ul role="group">${n.k.map(k => li(k, d + 1)).join('')}</ul>` : '') + '</li>';
   };
@@ -867,6 +902,7 @@ outline.addEventListener('input', e => {
   if (id === m.root) renderPicker();
 });
 outline.addEventListener('click', e => {
+  const pic = e.target.closest('[data-pic]'); if (pic) { sel = pic.dataset.pic; markOutlineSel(); renderCanvas(); return picDrawer(pic.dataset.pic); }
   const b = e.target.closest('[data-tw]'); if (!b) return;
   const m = cur(), id = b.dataset.tw; if (!m || !m.nodes[id] || !m.nodes[id].k.length) return;
   checkpoint(); m.nodes[id].f = !m.nodes[id].f; sel = id; changed(m); renderAll({ id, caret: 'end' });
@@ -907,8 +943,8 @@ outline.addEventListener('keydown', e => {
 
 /* ---------- Toolbars ---------- */
 const TB = {
-  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
-  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['image', 'Picture'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['image', 'Picture'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
   zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout'], ['auto', 'Auto-arrange: tidy up whenever ideas overlap']]
 };
 function toolbar(el, list, from) {
@@ -920,7 +956,7 @@ toolbar($('#ztools'), TB.zoom, 'map');
 function updateTools() {
   const m = cur(), n = m && sel && m.nodes[sel], h = hist[curId], par = n ? parents(m) : {}, p = n && par[sel], k = p ? m.nodes[p].k : [];
   const off = {
-    child: !n, sibling: !n, edit: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
+    child: !n, sibling: !n, edit: !n, image: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
     indent: !p || k.indexOf(sel) < 1, outdent: !p || !par[p], up: !p || k.indexOf(sel) < 1, down: !p || k.indexOf(sel) === k.length - 1,
     undo: !h || !h.u.length, redo: !h || !h.r.length
   };
@@ -937,7 +973,7 @@ document.addEventListener('click', e => {
 function act(a, from, caret = 'end') {
   const m = cur(); if (!m) return;
   const id = sel && m.nodes[sel] ? sel : null;
-  if (['child', 'sibling', 'edit', 'color', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
+  if (['child', 'sibling', 'edit', 'color', 'image', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
   const keep = r => { if (!r) { H().u.pop(); return; } typingId = null; changed(m); renderAll(from === 'outline' ? { id, caret } : null); if (from === 'map') reveal(id); };
   switch (a) {
     case 'child': case 'sibling': {
@@ -949,6 +985,7 @@ function act(a, from, caret = 'end') {
     }
     case 'edit': return from === 'outline' ? focusRow(id, 'end') : openEditor(id);
     case 'color': return openSwatches(id);
+    case 'image': return picDrawer(id);
     case 'fold': if (id === m.root || !m.nodes[id].k.length) return; checkpoint(); m.nodes[id].f = !m.nodes[id].f; return keep(true);
     case 'indent': checkpoint(); return keep(indent(m, id));
     case 'outdent': checkpoint(); return keep(outdent(m, id));
@@ -1089,8 +1126,10 @@ function toMarkdown(m) {
   return lines.join('\n') + '\n';
 }
 function toHTML(m) {
-  const list = id => { const k = m.nodes[id].k; return k.length ? '<ul>' + k.map(c => `<li>${esc(m.nodes[c].t || 'New idea')}${list(c)}</li>`).join('') + '</ul>' : ''; };
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title(m))}</title></head><body><h1>${esc(title(m))}</h1>${list(m.root)}</body></html>`;
+  const pic = n => n.i ? `<br><img src="${n.i.s}" width="${thumb(n.i).w}" height="${thumb(n.i).h}" alt="">` : '';
+  const list = id => { const k = m.nodes[id].k; return k.length ? '<ul>' + k.map(c => `<li>${esc(m.nodes[c].t || (m.nodes[c].i ? '' : 'New idea'))}${pic(m.nodes[c])}${list(c)}</li>`).join('') + '</ul>' : ''; };
+  const R = m.nodes[m.root];
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title(m))}</title></head><body><h1>${esc(title(m))}</h1>${R.i ? `<p>${pic(R).slice(4)}</p>` : ''}${list(m.root)}</body></html>`;
 }
 function download(blob, name) {
   const a = document.createElement('a');
@@ -1134,6 +1173,158 @@ async function saveGoogleDoc(m) {
     return url;
   } catch (e) { toast('Couldn’t save to Google Docs. Try again in a moment.'); }
 }
+
+/* ---------- Pictures ----------
+   Every way a picture comes in (the picker, a drop, a paste, a web search, a link) goes through attachImage(),
+   which shrinks it to IMG_MAX and stores it in the map as a small data: URL, so it syncs and exports with the map. */
+const isImageFile = f => f && /^image\//.test(f.type);
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    if (typeof src === 'string' && !src.startsWith('data:') && !src.startsWith('blob:')) im.crossOrigin = 'anonymous';
+    im.onload = () => res(im); im.onerror = () => rej(new Error('load'));
+    im.src = src;
+  });
+}
+let webpOK = null;
+async function shrinkImage(source) {
+  const url = typeof source === 'string' ? source : URL.createObjectURL(source);
+  try {
+    const im = await loadImg(url);
+    const k = Math.min(1, IMG_MAX / Math.max(im.naturalWidth, im.naturalHeight));
+    const w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high';
+    if (webpOK == null) webpOK = cv.toDataURL('image/webp').startsWith('data:image/webp');
+    if (!webpOK) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, w, h); }   // JPEG has no transparency
+    cx.drawImage(im, 0, 0, w, h);
+    let s;
+    try { s = webpOK ? cv.toDataURL('image/webp', 0.82) : cv.toDataURL('image/jpeg', 0.82); }
+    catch (e) { throw new Error('cors'); }
+    return { s, w, h };
+  } finally { if (typeof source !== 'string') URL.revokeObjectURL(url); }
+}
+async function attachImage(id, source, credit) {
+  const m = cur(); if (!m || !m.nodes[id]) return false;
+  try {
+    const i = await shrinkImage(source);
+    if (!m.nodes[id]) return false;
+    checkpoint();
+    m.nodes[id].i = credit ? { ...i, c: credit } : i;
+    changed(m); renderAll(); return true;
+  } catch (e) {
+    toast(e.message === 'cors' ? 'That site doesn’t let other pages copy its pictures. Save the picture, then drag it in or pick it.' : 'Couldn’t read that picture.', 5000);
+    return false;
+  }
+}
+function removeImage(id) { const m = cur(); if (!m || !m.nodes[id] || !m.nodes[id].i) return; checkpoint(); delete m.nodes[id].i; changed(m); renderAll(); }
+const ideaName = (m, id) => `“${(m.nodes[id].t.trim() || (id === m.root ? 'Central idea' : 'New idea')).slice(0, 40)}”`;
+
+/* Searching for a picture. Google Images has no API a static page can call without a key, so the search uses
+   Wikimedia Commons (free to use, keyless), and a link opens the same words in Google Images in a new tab
+   to drag or paste a picture from. */
+async function searchCommons(q) {
+  const u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=24'
+    + '&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlwidth=360&iiextmetadatafilter=Artist|LicenseShortName&gsrsearch=' + encodeURIComponent(q + ' filetype:bitmap');
+  const j = await (await fetch(u)).json();
+  const strip = h => { const d = document.createElement('div'); d.innerHTML = h || ''; return d.textContent.trim(); };
+  return Object.values((j.query && j.query.pages) || {}).sort((a, b) => a.index - b.index)
+    .map(p => { const ii = p.imageinfo && p.imageinfo[0]; if (!ii || !ii.thumburl || !/^image\/(jpeg|png|gif|webp)/.test(ii.mime || '')) return null;
+      const md = ii.extmetadata || {}, by = strip(md.Artist && md.Artist.value), lic = strip(md.LicenseShortName && md.LicenseShortName.value);
+      return { thumb: ii.thumburl, page: ii.descriptionurl, credit: [by, lic, 'Wikimedia Commons'].filter(Boolean).join(' · ') }; })
+    .filter(Boolean);
+}
+function picDrawer(id) {
+  const m = cur(); if (!m || !m.nodes[id]) return;
+  const n = m.nodes[id], q = n.t.trim();
+  openDrawer('Picture', `
+    <p class="small muted">For ${esc(ideaName(m, id))}. It shows on the map and in the outline, and goes into the Google Doc.</p>
+    ${n.i ? `<div class="picnow"><img src="${n.i.s}" alt="Current picture"><div class="stack" style="gap:6px">${n.i.c ? `<span class="small muted">${esc(n.i.c)}</span>` : ''}<button class="btn sm danger" type="button" id="picDel">Remove picture</button></div></div>` : ''}
+    <div class="row"><button class="btn primary" type="button" id="picPick">Choose a picture…</button></div>
+    <input type="file" id="picFile" accept="image/*" hidden>
+    <section class="stack" style="gap:8px"><h3>Find one</h3>
+      <form class="searchrow" id="picForm"><label class="sr-only" for="picQ">Search for pictures</label><input type="text" id="picQ" value="${esc(q)}" placeholder="What should it show?" enterkeyhint="search"><button class="btn" type="submit">Search</button></form>
+      <div id="picRes" class="picgrid"></div>
+      <p class="small muted" id="picNote">Free pictures from Wikimedia Commons, credited on the idea. <a href="#" id="picGoogle" target="_blank" rel="noopener">Search Google Images</a> opens in a new tab: drag a picture from there onto an idea, or copy it and paste it here.</p>
+    </section>
+    <section class="stack" style="gap:8px"><h3>From a link</h3>
+      <form class="searchrow" id="picUrlForm"><label class="sr-only" for="picUrl">Picture link</label><input type="text" id="picUrl" inputmode="url" placeholder="https://…/picture.jpg"><button class="btn" type="submit">Use</button></form>
+    </section>
+    <p class="small muted">You can also drop a picture onto any idea, or paste one (Ctrl+V) while an idea is selected.</p>`, d => {
+    const done = ok => { if (ok) { closeDrawer(); toast('Picture added'); } };
+    const gl = d.querySelector('#picGoogle');
+    const setG = () => { gl.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(d.querySelector('#picQ').value.trim() || q); };
+    setG(); d.querySelector('#picQ').oninput = setG;
+    d.querySelector('#picPick').onclick = () => d.querySelector('#picFile').click();
+    d.querySelector('#picFile').onchange = async e => { const f = e.target.files[0]; if (f) done(await attachImage(id, f)); };
+    const del = d.querySelector('#picDel'); if (del) del.onclick = () => { removeImage(id); closeDrawer(); toast('Picture removed', 4000, { label: 'Undo', run: undo }); };
+    d.querySelector('#picUrlForm').onsubmit = async e => { e.preventDefault(); const u = d.querySelector('#picUrl').value.trim(); if (!/^https?:\/\//.test(u)) return toast('Paste a link that starts with https://'); done(await attachImage(id, u)); };
+    const res = d.querySelector('#picRes');
+    const search = async () => {
+      const term = d.querySelector('#picQ').value.trim(); if (!term) return;
+      res.innerHTML = '<p class="small muted">Searching…</p>';
+      try {
+        const list = await searchCommons(term);
+        if (!res.isConnected) return;
+        if (!list.length) { res.innerHTML = '<p class="small muted">Nothing found. Try other words, or Google Images below.</p>'; return; }
+        res.innerHTML = list.map((r, i) => `<button type="button" data-r="${i}" title="${esc(r.credit)}"><img src="${esc(r.thumb)}" alt="" loading="lazy"></button>`).join('');
+        res.onclick = async e => { const b = e.target.closest('[data-r]'); if (!b) return; b.setAttribute('aria-busy', 'true'); const r = list[+b.dataset.r]; done(await attachImage(id, r.thumb, r.credit)); b.removeAttribute('aria-busy'); };
+      } catch (e) { if (res.isConnected) res.innerHTML = '<p class="small muted">Couldn’t search right now. Are you online?</p>'; }
+    };
+    d.querySelector('#picForm').onsubmit = e => { e.preventDefault(); search(); };
+    if (q) search();
+  });
+}
+
+/* Dropping pictures anywhere on the page (see STANDARDS.md, "Adding photos"): onto an idea puts it there,
+   anywhere else uses the selected idea, or the central idea when none is */
+function dropTarget(x, y) {
+  const m = cur(); if (!m) return null;
+  const el = document.elementFromPoint(x, y), g = el && el.closest('.node, #outline li');
+  const id = g && g.dataset.id;
+  return id && m.nodes[id] ? id : (sel && m.nodes[sel] ? sel : m.root);
+}
+const draggingPics = e => { const t = e.dataTransfer && [...e.dataTransfer.types]; return !!t && (t.includes('Files') || t.includes('text/uri-list')); };
+let dz = null, dzOff;
+function showDropzone(text) {
+  if (!dz) { dz = document.createElement('div'); dz.className = 'dropzone'; dz.innerHTML = '<p></p>'; document.body.appendChild(dz); }
+  dz.firstChild.textContent = text;
+}
+function hideDropzone() { if (dz) { dz.remove(); dz = null; } }
+document.addEventListener('dragover', e => {
+  if (!draggingPics(e) || $('#layer').innerHTML) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  const m = cur(), id = dropTarget(e.clientX, e.clientY);
+  if (id) showDropzone(`Drop to add the picture to ${ideaName(m, id)}`);
+  clearTimeout(dzOff); dzOff = setTimeout(hideDropzone, 250);
+});
+document.addEventListener('drop', async e => {
+  if (!draggingPics(e)) return;
+  e.preventDefault(); hideDropzone();
+  const id = dropTarget(e.clientX, e.clientY); if (!id) return;
+  const files = [...(e.dataTransfer.files || [])], pics = files.filter(isImageFile);
+  if (pics.length) {
+    const skipped = files.length - pics.length;
+    if (await attachImage(id, pics[0])) toast(pics.length > 1 || skipped ? `Picture added. An idea holds one picture, so ${plural(files.length - 1, 'other file')} ${files.length - 1 === 1 ? 'was' : 'were'} left out.` : 'Picture added', 4000);
+    return;
+  }
+  if (files.length) return toast('That isn’t a picture. JPEG, PNG, GIF and WebP pictures work.', 4000);
+  // A picture dragged from another web page arrives as its address
+  const html = e.dataTransfer.getData('text/html'), src = (html.match(/<img[^>]+src="([^"]+)"/i) || [])[1];
+  const url = (src || e.dataTransfer.getData('text/uri-list').split('\n').find(l => l && !l.startsWith('#')) || '').trim().replace(/&amp;/g, '&');
+  if (/^(https?:|data:image\/)/.test(url) && await attachImage(id, url)) toast('Picture added');
+});
+// Pasting a picture: onto the selected idea, unless the paste is text going into a text box
+document.addEventListener('paste', async e => {
+  const items = [...(e.clipboardData ? e.clipboardData.items : [])], pic = items.find(i => i.kind === 'file' && /^image\//.test(i.type));
+  if (!pic) return;
+  const m = cur(), inDrawer = $('#layer .drawer'), drawerFor = inDrawer && $('#picRes') ? sel : null;
+  const id = drawerFor || (sel && m && m.nodes[sel] ? sel : null);
+  if (!id) return toast('Select an idea first, then paste');
+  if (items.some(i => i.type === 'text/plain') && /^(INPUT|TEXTAREA)$/.test(document.activeElement && document.activeElement.tagName) && !drawerFor) return;
+  e.preventDefault();
+  if (await attachImage(id, pic.getAsFile())) { if (drawerFor) closeDrawer(); toast('Picture added'); }
+});
 
 /* ---------- Drawers ---------- */
 function openDrawer(title, inner, wire) {

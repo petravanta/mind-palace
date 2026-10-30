@@ -164,6 +164,17 @@ main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minm
 .node rect.box{fill:var(--surface);stroke:var(--bc);stroke-width:1.5}
 .node text{fill:var(--ink);font:500 14px var(--f-body);text-anchor:middle;dominant-baseline:central}
 .node text.ph{fill:var(--faint)}
+.node text.cost{font:500 12px var(--f-mono);fill:var(--muted)}
+.node text.cost.sum{font-weight:600;fill:var(--bc)}
+.node.d0 text.cost{fill:var(--accent-ink);opacity:.9}
+.orow .ocost{flex:none;display:flex;flex-direction:column;align-items:flex-end;margin:3px 0 0 4px}
+.orow .ocost input{width:84px;text-align:right;font:500 13px var(--f-mono);padding:5px 7px;border:1px solid transparent;border-radius:6px;background:var(--sunk)}
+.orow .ocost input:placeholder-shown:not(:focus){background:none}
+.orow .ocost input::placeholder{color:var(--faint)}
+.orow .ocost input:focus{border-color:var(--accent);outline:none;background:var(--surface)}
+.orow .ocost small{font:600 11px var(--f-mono);color:var(--bc);padding:2px 7px 0;white-space:nowrap}
+.orow .ocost small:empty{display:none}
+.costsum{font-family:var(--f-mono);font-weight:600}
 .node.d1 rect.box{stroke-width:2.5}
 .node.d0 rect.box{fill:var(--accent);stroke:none}
 .node.d0 text{fill:var(--accent-ink);font-weight:600;font-size:17px}
@@ -280,6 +291,7 @@ const LISTS = ['maps'];
 const COLORS = 8;
 const GAP_X = 56, GAP_Y = 12, GAP_TOP = 26, ROW = 46;   // spacing for Tidy up and for placing new ideas
 const FONT = '"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif';
+const MONO = '"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace';
 const DRIVE_API = 'https://www.googleapis.com';
 const IMG_MAX = 240;              // longest side of a stored picture, in pixels
 const THUMB_W = 150, THUMB_H = 100; // largest a picture shows on the map
@@ -311,6 +323,7 @@ const ICON = {
   zout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/>',
   fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
   auto: '<path d="M12 3l1.6 3.9L17.5 8.5l-3.9 1.6L12 14l-1.6-3.9L6.5 8.5l3.9-1.6z"/><path d="M18.5 14l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8zM6 15.5l.6 1.4 1.4.6-1.4.6L6 19.5l-.6-1.4-1.4-.6 1.4-.6z"/>',
+  cost: '<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.4c-.5-.9-1.5-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2.1 0 2.8 5.8 1.4 5.8 4.2 0 1.3-1.3 2.2-3 2.2-1.3 0-2.4-.5-2.9-1.5M12 6.4V8M12 16.5v1.6"/>',
   image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>',
   tidy: '<circle cx="6" cy="12" r="2.5"/><rect x="13" y="3.5" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="4" rx="1.5"/><rect x="13" y="16.5" width="7" height="4" rx="1.5"/><path d="M8.5 12H11M11 5.5v13M11 5.5h2M11 12h2M11 18.5h2"/>',
   chev: '<path d="M6 9l6 6 6-6"/>'
@@ -319,7 +332,8 @@ const svgI = (k, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="cu
 
 /* ---------- The document ---------- */
 // One record per map: { id, u, root, auto?: re-arrange whenever ideas overlap, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
-//   a?: colour 0-7 the branch got when it became a main branch, f?: folded, i?: picture (cleanImage) } }, gdoc?: id of the Google Doc saved from it }
+//   a?: colour 0-7 the branch got when it became a main branch, f?: folded, i?: picture (cleanImage), v?: cost } },
+//   gdoc?: id of the Google Doc saved from it, costs?: show costs, unit?: currency or unit costs are in (default '$') }
 // An idea's picture: { s: a small data: URL (made by shrinkImage), w, h: its pixel size, c?: credit line }
 function cleanImage(i) {
   if (!i || typeof i !== 'object' || typeof i.s !== 'string' || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(i.s) || i.s.length > 400000) return null;
@@ -340,6 +354,7 @@ function cleanMap(m) {
     if (Number.isInteger(n.a) && n.a >= 0 && n.a < COLORS) o.a = n.a;
     if (n.f) o.f = true;
     const im = cleanImage(n.i); if (im) o.i = im;
+    if (Number.isFinite(n.v)) o.v = n.v;
     nodes[id] = o;
     for (const c of Array.isArray(n.k) ? n.k : []) if (walk(c)) o.k.push(c);
     return true;
@@ -347,6 +362,8 @@ function cleanMap(m) {
   const out = { id: m.id, u: m.u || '', root: m.root, nodes };
   if (typeof m.gdoc === 'string') out.gdoc = m.gdoc;
   if (m.auto) out.auto = true;
+  if (m.costs) out.costs = true;
+  if (typeof m.unit === 'string') out.unit = m.unit.trim().slice(0, 8);
   return out;
 }
 function upgrade(d) {
@@ -397,7 +414,7 @@ function save() {
 }
 function touchMap(m) { m.u = now(); return m; }
 // With Auto-arrange on, any change that leaves ideas overlapping lays the whole map out again
-function changed(m, noAuto) { if (m.auto && !noAuto && overlapping(m)) tidy(m); touchMap(m); save(); }
+function changed(m, noAuto) { totRev++; if (m.auto && !noAuto && overlapping(m)) tidy(m); touchMap(m); save(); }
 const title = m => (m && m.nodes[m.root].t.trim()) || 'Untitled map';
 
 /* ---------- The tree ---------- */
@@ -595,13 +612,64 @@ function measure(t, root) {
   MCACHE.set(key, s);
   return s;
 }
-// An idea with a picture shows it above its text (or alone, when the idea has no text)
+/* ---------- Costs ----------
+   Any idea can have a cost (`v`). An idea's total is its own cost plus the totals of everything under it, folded or not;
+   ideas without a cost count as nothing. Totals are worked out once per change (totRev) and shown wherever the map is. */
+const costFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+const unitOf = m => m.unit ?? '$';
+// Symbols ($, €, £) go before the number, words and codes (Ft, kr, h, USD) after it
+function money(m, v) {
+  const u = unitOf(m), n = costFmt.format(Math.abs(v)), sign = v < 0 ? '−' : '';
+  return !u ? sign + n : /^[^\p{L}\p{N}\s]{1,3}$/u.test(u) ? sign + u + n : `${sign}${n} ${u}`;
+}
+// Reads "1,250.50", "1.250,50", "1 250", "$12" or "12 €"; '' clears the cost
+function parseCost(t) {
+  let s = String(t).replace(/[^\d.,\-−]/g, '').replace('−', '-');
+  if (!s || s === '-') return null;
+  const c = s.lastIndexOf(','), d = s.lastIndexOf('.');
+  if (c > -1 && d > -1) s = c > d ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if (c > -1) { const g = s.split(','); s = g.slice(1).every(x => /^\d{3}$/.test(x)) ? g.join('') : g[0] + '.' + g.slice(1).join(''); }
+  else if (s.split('.').length > 2) s = s.replace(/\./g, '');
+  const v = parseFloat(s);
+  return Number.isFinite(v) ? Math.round(v * 100) / 100 : null;
+}
+let totRev = 0, totCache = null;
+function totals(m) {
+  if (totCache && totCache.m === m && totCache.rev === totRev) return totCache.t;
+  const t = {};
+  (function w(id) {
+    const n = m.nodes[id], own = Number.isFinite(n.v);
+    let sum = own ? n.v : 0, kids = false;
+    for (const c of n.k) { w(c); if (t[c].any) { sum += t[c].sum; kids = true; } }
+    t[id] = { sum: Math.round(sum * 100) / 100, any: own || kids, kids };
+  })(m.root);
+  totCache = { m, rev: totRev, t };
+  return t;
+}
+// What an idea shows: its cost, or Σ and its branch's total (its own cost first, when it has one too)
+function costLabel(m, id) {
+  if (!m.costs) return '';
+  const T = totals(m)[id], v = m.nodes[id].v; if (!T || !T.any) return '';
+  if (!T.kids) return money(m, v);
+  return (Number.isFinite(v) ? money(m, v) + ' · ' : '') + 'Σ ' + money(m, T.sum);
+}
+
+// An idea shows, top to bottom: its picture, its text (none when it has a picture and no text), its cost
 function thumb(i) { const k = Math.min(THUMB_W / i.w, THUMB_H / i.h, 1); return { w: Math.round(i.w * k), h: Math.round(i.h * k) }; }
 function size(m, id) {
-  const n = m.nodes[id], root = id === m.root, s = measure(n.t, root);
-  if (!n.i) return s;
-  const d = thumb(n.i), px = root ? 18 : 12, py = root ? 12 : 7, bare = !n.t.trim();
-  return { ...s, w: Math.max(bare ? 0 : s.w, d.w + 16), h: (bare ? py * 2 - 8 : s.h + 6) + d.h, img: d, bare, py: bare ? 4 : py, lines: bare ? [] : s.lines };
+  const n = m.nodes[id], root = id === m.root, base = measure(n.t, root), cost = costLabel(m, id);
+  if (!n.i && !cost) return base;
+  const img = n.i ? thumb(n.i) : null, bare = !!img && !n.t.trim(), px = root ? 18 : 12, py = root ? 12 : 7;
+  const lines = bare ? [] : base.lines, textH = lines.length * base.lh;
+  let w = bare ? 0 : base.w;
+  if (img) w = Math.max(w, img.w + 16);
+  if (cost) { mctx.font = `600 12px ${MONO}`; w = Math.max(w, Math.ceil(mctx.measureText(cost).width) + px * 2, 64); }
+  let h = bare ? 4 : py;
+  const iy = h; if (img) h += img.h + (lines.length || cost ? 6 : 0);
+  const ty = h + textH / 2; h += textH;
+  const cy = h + (lines.length ? 9 : 8); if (cost) h += lines.length ? 18 : 16;
+  h += bare && !cost ? 4 : py;
+  return { w, h, lines, lh: base.lh, img, cost, iy: iy - h / 2, ty: ty - h / 2, cy: cy - h / 2 };
 }
 
 /* ---------- The canvas ---------- */
@@ -627,14 +695,15 @@ function renderCanvas() {
     if (drag && drag.has(id)) cls.push('drag');
     const p = par[id];
     if (p) links += `<path class="link${p === m.root ? ' l1' : ''}" style="--bc:${colorVar(c)}" d="${linkPath(m.nodes[p], size(m, p), n, s)}"/>`;
-    const y0 = -(s.lines.length - 1) * s.lh / 2 + (s.img ? (s.img.h + 6) / 2 : 0), rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
+    const y0 = (s.ty || 0) - (s.lines.length - 1) * s.lh / 2, rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
     const text = s.lines.map((l, i) => `<tspan x="0" y="${y0 + i * s.lh}">${esc(l)}</tspan>`).join('');
     const hidden = n.f && n.k.length ? subtree(m, id).length - 1 : 0, sd = side(m, par, id);
     nodes += `<g class="${cls.join(' ')}" data-id="${id}" transform="translate(${n.x} ${n.y})" style="--bc:${colorVar(c)}">`
       + `<rect class="ring" x="${-s.w / 2 - 5}" y="${-s.h / 2 - 5}" width="${s.w + 10}" height="${s.h + 10}" rx="${rx + 4}"/>`
       + `<rect class="box" x="${-s.w / 2}" y="${-s.h / 2}" width="${s.w}" height="${s.h}" rx="${rx}"/>`
-      + (s.img ? `<image class="pic" href="${n.i.s}" x="${-s.img.w / 2}" y="${-s.h / 2 + s.py}" width="${s.img.w}" height="${s.img.h}" preserveAspectRatio="xMidYMid slice"/>` : '')
+      + (s.img ? `<image class="pic" href="${n.i.s}" x="${-s.img.w / 2}" y="${s.iy}" width="${s.img.w}" height="${s.img.h}" preserveAspectRatio="xMidYMid slice"/>` : '')
       + (s.lines.length ? `<text${n.t.trim() ? '' : ' class="ph"'}>${text}</text>` : '')
+      + (s.cost ? `<text class="cost${totals(m)[id].kids ? ' sum' : ''}" y="${s.cy}">${esc(s.cost)}</text>` : '')
       + (hidden ? `<g class="fold" data-fold="${id}" transform="translate(${sd * (s.w / 2 + 14)} 0)"><circle r="11"/><text>${hidden > 99 ? '99+' : hidden}</text></g>` : '')
       + '</g>';
   }
@@ -846,13 +915,17 @@ function renderOutline(focus) {
       + `<button type="button" class="tw" data-tw="${id}" tabindex="-1"${has ? ` aria-label="${open ? 'Fold' : 'Unfold'}"` : ' aria-hidden="true" disabled'}>${has ? svgI('chev') : ''}</button>`
       + (d ? '<span class="bul"></span>' : '')
       + (n.i ? `<button type="button" class="othumb" data-pic="${id}" tabindex="-1" aria-label="Picture"><img src="${n.i.s}" alt=""></button>` : '')
-      + `<textarea rows="1" class="ot${d ? '' : ' root'}" data-id="${id}" placeholder="${d ? 'New idea' : 'Central idea'}" enterkeyhint="next" autocomplete="off" spellcheck="true" aria-label="${d ? 'Idea' : 'Central idea'}">${esc(n.t)}</textarea></div>`
+      + `<textarea rows="1" class="ot${d ? '' : ' root'}" data-id="${id}" placeholder="${d ? 'New idea' : 'Central idea'}" enterkeyhint="next" autocomplete="off" spellcheck="true" aria-label="${d ? 'Idea' : 'Central idea'}">${esc(n.t)}</textarea>`
+      + (m.costs ? `<span class="ocost"><input type="text" data-cost="${id}" inputmode="decimal" enterkeyhint="next" autocomplete="off" value="${Number.isFinite(n.v) ? esc(costFmt.format(n.v)) : ''}" placeholder="${esc(unitOf(m) || 'cost')}" aria-label="Cost"><small data-tot="${id}">${sumText(m, id)}</small></span>` : '')
+      + '</div>'
       + (has && open ? `<ul role="group">${n.k.map(k => li(k, d + 1)).join('')}</ul>` : '') + '</li>';
   };
   $('#outline').innerHTML = li(m.root, 0);
   growAll();
   if (focus) focusRow(focus.id, focus.caret);
 }
+const sumText = (m, id) => { const T = totals(m)[id]; return T && T.kids ? 'Σ ' + esc(money(m, T.sum)) : ''; };
+function refreshSums() { const m = cur(); if (m && m.costs) outline.querySelectorAll('[data-tot]').forEach(el => { el.innerHTML = sumText(m, el.dataset.tot); }); }
 function rowInput(id) { return document.querySelector(`#outline textarea[data-id="${id}"]`); }
 // Rows wrap long ideas; browsers without field-sizing need the height set by hand
 const FIELD_SIZING = CSS.supports('field-sizing', 'content');
@@ -883,17 +956,19 @@ function markOutlineSel() {
 function syncOutlineText(id) { const inp = rowInput(id), m = cur(); if (inp && m && document.activeElement !== inp) inp.value = m.nodes[id].t; }
 const outline = $('#outline');
 outline.addEventListener('focusin', e => {
-  const id = e.target.dataset && e.target.dataset.id; if (!id || e.target.tagName !== 'TEXTAREA') return;
+  const id = e.target.dataset && (e.target.dataset.id || e.target.dataset.cost); if (!id || !/^(TEXTAREA|INPUT)$/.test(e.target.tagName)) return;
   if (typingId !== id) typingId = null;
   if (sel !== id) { sel = id; markOutlineSel(); renderCanvas(); }
   if (!matchMedia('(max-width:899px)').matches) reveal(id);
 });
 outline.addEventListener('focusout', e => {
+  if (e.target.dataset && e.target.dataset.cost) { const m = cur(), n = m && m.nodes[e.target.dataset.cost]; if (n) e.target.value = Number.isFinite(n.v) ? costFmt.format(n.v) : ''; typingId = null; return; }
   const m = cur(), id = e.target.dataset && e.target.dataset.id;
   if (m && id && m.nodes[id] && m.nodes[id].t !== m.nodes[id].t.trim()) { m.nodes[id].t = m.nodes[id].t.trim(); changed(m); renderCanvas(); }
   typingId = null;
 });
 outline.addEventListener('input', e => {
+  if (e.target.dataset.cost) return setCost(e.target.dataset.cost, e.target.value, 'outline');
   const m = cur(), id = e.target.dataset.id; if (!m || !m.nodes[id]) return;
   if (/\n/.test(e.target.value)) { const c = e.target.selectionStart; e.target.value = e.target.value.replace(/\s*\n\s*/g, ' '); e.target.setSelectionRange(c, c); }
   if (typingId !== id) { checkpoint(); typingId = id; }
@@ -908,6 +983,13 @@ outline.addEventListener('click', e => {
   checkpoint(); m.nodes[id].f = !m.nodes[id].f; sel = id; changed(m); renderAll({ id, caret: 'end' });
 });
 outline.addEventListener('keydown', e => {
+  // Enter and the arrows in a cost box go to the cost box of the next or previous row, like a spreadsheet
+  if (e.target.dataset.cost && /^(Enter|ArrowUp|ArrowDown)$/.test(e.key)) {
+    e.preventDefault();
+    const all = [...outline.querySelectorAll('[data-cost]')], next = all[all.indexOf(e.target) + (e.key === 'ArrowUp' ? -1 : 1)];
+    if (next) { next.focus(); next.select(); } else e.target.blur();
+    return;
+  }
   const inp = e.target; if (inp.tagName !== 'TEXTAREA' || e.isComposing) return;
   const m = cur(), id = inp.dataset.id; if (!m || !m.nodes[id]) return;
   const mod = e.ctrlKey || e.metaKey;
@@ -943,8 +1025,8 @@ outline.addEventListener('keydown', e => {
 
 /* ---------- Toolbars ---------- */
 const TB = {
-  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['image', 'Picture'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
-  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['image', 'Picture'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['image', 'Picture'], ['cost', 'Cost'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['image', 'Picture'], ['cost', 'Cost'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
   zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout'], ['auto', 'Auto-arrange: tidy up whenever ideas overlap']]
 };
 function toolbar(el, list, from) {
@@ -956,7 +1038,7 @@ toolbar($('#ztools'), TB.zoom, 'map');
 function updateTools() {
   const m = cur(), n = m && sel && m.nodes[sel], h = hist[curId], par = n ? parents(m) : {}, p = n && par[sel], k = p ? m.nodes[p].k : [];
   const off = {
-    child: !n, sibling: !n, edit: !n, image: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
+    child: !n, sibling: !n, edit: !n, image: !n, cost: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
     indent: !p || k.indexOf(sel) < 1, outdent: !p || !par[p], up: !p || k.indexOf(sel) < 1, down: !p || k.indexOf(sel) === k.length - 1,
     undo: !h || !h.u.length, redo: !h || !h.r.length
   };
@@ -973,7 +1055,7 @@ document.addEventListener('click', e => {
 function act(a, from, caret = 'end') {
   const m = cur(); if (!m) return;
   const id = sel && m.nodes[sel] ? sel : null;
-  if (['child', 'sibling', 'edit', 'color', 'image', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
+  if (['child', 'sibling', 'edit', 'color', 'image', 'cost', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
   const keep = r => { if (!r) { H().u.pop(); return; } typingId = null; changed(m); renderAll(from === 'outline' ? { id, caret } : null); if (from === 'map') reveal(id); };
   switch (a) {
     case 'child': case 'sibling': {
@@ -986,6 +1068,7 @@ function act(a, from, caret = 'end') {
     case 'edit': return from === 'outline' ? focusRow(id, 'end') : openEditor(id);
     case 'color': return openSwatches(id);
     case 'image': return picDrawer(id);
+    case 'cost': if (from === 'outline' && m.costs) { const c = outline.querySelector(`[data-cost="${id}"]`); if (c) { c.focus(); c.select(); return; } } return costDrawer(id);
     case 'fold': if (id === m.root || !m.nodes[id].k.length) return; checkpoint(); m.nodes[id].f = !m.nodes[id].f; return keep(true);
     case 'indent': checkpoint(); return keep(indent(m, id));
     case 'outdent': checkpoint(); return keep(outdent(m, id));
@@ -1122,14 +1205,17 @@ function mapFromText(text, fallback) {
 }
 function toMarkdown(m) {
   const lines = ['# ' + title(m), ''];
-  (function w(id, d) { for (const k of m.nodes[id].k) { lines.push('  '.repeat(d) + '- ' + (m.nodes[k].t || 'New idea')); w(k, d + 1); } })(m.root, 0);
+  const c = id => { const l = costLabel(m, id); return l ? ` — ${l}` : ''; };
+  if (c(m.root)) lines.splice(1, 0, '', 'Total' + c(m.root).replace(/^ — (Σ )?/, ': ').replace(/^: .* · Σ /, ': '));
+  (function w(id, d) { for (const k of m.nodes[id].k) { lines.push('  '.repeat(d) + '- ' + (m.nodes[k].t || 'New idea') + c(k)); w(k, d + 1); } })(m.root, 0);
   return lines.join('\n') + '\n';
 }
 function toHTML(m) {
   const pic = n => n.i ? `<br><img src="${n.i.s}" width="${thumb(n.i).w}" height="${thumb(n.i).h}" alt="">` : '';
-  const list = id => { const k = m.nodes[id].k; return k.length ? '<ul>' + k.map(c => `<li>${esc(m.nodes[c].t || (m.nodes[c].i ? '' : 'New idea'))}${pic(m.nodes[c])}${list(c)}</li>`).join('') + '</ul>' : ''; };
-  const R = m.nodes[m.root];
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title(m))}</title></head><body><h1>${esc(title(m))}</h1>${R.i ? `<p>${pic(R).slice(4)}</p>` : ''}${list(m.root)}</body></html>`;
+  const cost = id => { const l = costLabel(m, id); return l ? ` <b>${esc(l)}</b>` : ''; };
+  const list = id => { const k = m.nodes[id].k; return k.length ? '<ul>' + k.map(c => `<li>${esc(m.nodes[c].t || (m.nodes[c].i ? '' : 'New idea'))}${cost(c)}${pic(m.nodes[c])}${list(c)}</li>`).join('') + '</ul>' : ''; };
+  const R = m.nodes[m.root], T = m.costs && totals(m)[m.root];
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title(m))}</title></head><body><h1>${esc(title(m))}</h1>${R.i ? `<p>${pic(R).slice(4)}</p>` : ''}${T && T.any ? `<p><b>Total: ${esc(money(m, T.sum))}</b></p>` : ''}${list(m.root)}</body></html>`;
 }
 function download(blob, name) {
   const a = document.createElement('a');
@@ -1173,6 +1259,37 @@ async function saveGoogleDoc(m) {
     return url;
   } catch (e) { toast('Couldn’t save to Google Docs. Try again in a moment.'); }
 }
+
+// One undo step per visit to a cost box; the totals above it update as you type
+function setCost(id, text, from) {
+  const m = cur(); if (!m || !m.nodes[id]) return;
+  const v = parseCost(text), n = m.nodes[id];
+  if (v === (Number.isFinite(n.v) ? n.v : null)) return;
+  if (typingId !== 'c' + id) { checkpoint(); typingId = 'c' + id; }
+  if (v == null) delete n.v; else n.v = v;
+  m.costs = true;
+  changed(m); renderCanvasSoon(); refreshSums();
+  if (from !== 'outline') { const inp = outline.querySelector(`[data-cost="${id}"]`); if (inp) inp.value = v == null ? '' : costFmt.format(v); else renderOutline(); }
+}
+function costDrawer(id) {
+  const m = cur(); if (!m || !m.nodes[id]) return;
+  const n = m.nodes[id], T = () => totals(m)[id];
+  const totalLine = () => T().kids ? `With everything under it: <span class="costsum">${esc(money(m, T().sum))}</span>` : (n.k.length ? 'Nothing under it has a cost yet.' : '');
+  openDrawer('Cost', `
+    <p class="small muted">For ${esc(ideaName(m, id))}.</p>
+    <label class="field">Cost${unitOf(m) ? ` (${esc(unitOf(m))})` : ''}<input type="text" id="cdV" inputmode="decimal" autocomplete="off" value="${Number.isFinite(n.v) ? esc(costFmt.format(n.v)) : ''}" placeholder="0"></label>
+    <p class="small" id="cdTot">${totalLine()}</p>
+    <p class="small muted">Leave it empty for no cost. Each idea shows its own cost; one with costs under it shows Σ and the total of its whole branch, its own cost included. The currency or unit is in <b>This map</b>.</p>
+    <div class="row"><button class="btn primary" type="button" data-close>Done</button>${Number.isFinite(n.v) ? '<button class="btn ghost" type="button" id="cdClear">Remove cost</button>' : ''}</div>`, d => {
+    const inp = d.querySelector('#cdV');
+    inp.oninput = () => { setCost(id, inp.value, 'map'); d.querySelector('#cdTot').innerHTML = totalLine(); };
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); closeDrawer(); } };
+    d.querySelector('[data-close]:not(.x)').onclick = closeDrawer;
+    const c = d.querySelector('#cdClear'); if (c) c.onclick = () => { setCost(id, '', 'map'); closeDrawer(); };
+    if (!matchMedia('(pointer:fine)').matches) inp.focus();
+  });
+}
+function setCostsShown(m, on) { checkpoint(); m.costs = on; if (!on) delete m.costs; changed(m); renderAll(); }
 
 /* ---------- Pictures ----------
    Every way a picture comes in (the picker, a drop, a paste, a web search, a link) goes through attachImage(),
@@ -1379,6 +1496,10 @@ function mapDrawer() {
       <div class="row"><button class="btn" type="button" id="mdTidy">Tidy up the layout</button><button class="btn" type="button" id="mdFit">Fit on screen</button></div>
       <p class="small muted">Tidy up puts the main branches either side of the central idea in outline order. Undo puts your own layout back.</p>
       <label class="row small"><input type="checkbox" id="mdAuto"${m.auto ? ' checked' : ''}> <span><b>Auto-arrange.</b> Tidy up by itself whenever ideas overlap, as you add, move or type. You can still drag ideas: where you drop one among its siblings sets its order.</span></label>
+      <h3>Costs</h3>
+      <label class="row small"><input type="checkbox" id="mdCosts"${m.costs ? ' checked' : ''}> <span><b>Show costs.</b> Give any idea a cost; each idea with costs under it shows Σ and its branch total.${m.costs && totals(m)[m.root].any ? ` Whole map: <span class="costsum">${esc(money(m, totals(m)[m.root].sum))}</span>.` : ''}</span></label>
+      <label class="field">Currency or unit<input type="text" id="mdUnit" list="mdUnits" maxlength="8" value="${esc(unitOf(m))}" placeholder="None"></label>
+      <datalist id="mdUnits"><option value="$"><option value="€"><option value="£"><option value="¥"><option value="Ft"><option value="kr"><option value="CHF"><option value="h"></datalist>
       <h3>Map</h3>
       <div class="row"><button class="btn" type="button" id="mdDup">Duplicate</button><button class="btn danger" type="button" id="mdDel">Delete map</button></div>
     </div>`, d => {
@@ -1387,6 +1508,8 @@ function mapDrawer() {
     d.querySelector('#mdCopy').onclick = async () => { try { await navigator.clipboard.writeText(toMarkdown(m)); toast('Outline copied'); } catch (e) { toast('Couldn’t copy here. Try Download Markdown.'); } };
     d.querySelector('#mdTidy').onclick = () => { closeDrawer(); act('tidy', 'map'); };
     d.querySelector('#mdAuto').onchange = () => act('auto', 'map');
+    d.querySelector('#mdCosts').onchange = e => setCostsShown(m, e.target.checked);
+    d.querySelector('#mdUnit').oninput = e => { m.unit = e.target.value.trim().slice(0, 8); changed(m); renderAll(); };
     d.querySelector('#mdFit').onclick = () => { closeDrawer(); if (matchMedia('(max-width:899px)').matches) setTab('map'); fit(); };
     d.querySelector('#mdDup').onclick = () => { const c = JSON.parse(JSON.stringify(m)); c.id = uid(); c.u = now(); delete c.gdoc; c.nodes[c.root].t = title(m) + ' (copy)'; closeDrawer(); addMap(c); toast('Duplicated'); };
     wireDelete(d.querySelector('#mdDel'), 'Tap again to delete', () => {
@@ -1450,7 +1573,7 @@ $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) set
 $('#mapBtn').onclick = mapDrawer;
 $('#settingsBtn').onclick = settingsDrawer;
 
-function renderAll(focus) { renderPicker(); renderCanvas(); renderOutline(focus); updateTools(); }
+function renderAll(focus) { totRev++; renderPicker(); renderCanvas(); renderOutline(focus); updateTools(); }
 
 /* ===== Google sign-in shared by petravanta's apps =====
    Canonical copy: https://github.com/petravanta/general/blob/main/shared/google-token.js (see STANDARDS.md, "Staying connected to Google Drive").

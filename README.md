@@ -39,3 +39,7 @@ Nothing is uploaded to a server of ours. Maps live in your browser (`localStorag
 ## Publishing
 
 GitHub Pages serves this repo from the `main` branch, root folder (Settings → Pages → Deploy from a branch → `main` / `/ (root)`). The `.nojekyll` file makes Pages serve files as they are.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

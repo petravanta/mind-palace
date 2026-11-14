@@ -185,6 +185,12 @@ main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minm
 .node.drag{opacity:.8;pointer-events:none}
 .fold circle{fill:var(--surface);stroke:var(--bc);stroke-width:1.5}
 .fold text{font:600 11px var(--f-mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+/* An idea whose branch moved to a map of its own: dashed, with an open-map button */
+.node.linked rect.box{stroke-dasharray:5 3}
+.lnk{cursor:pointer}
+.lnk circle{fill:color-mix(in srgb,var(--bc) 16%,var(--surface));stroke:var(--bc);stroke-width:1}
+.lnk path{fill:none;stroke:var(--bc);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.lnk:hover circle{fill:color-mix(in srgb,var(--bc) 30%,var(--surface))}
 .editor{position:absolute;z-index:4;margin:0;resize:none;overflow:hidden;text-align:center;font:500 16px var(--f-body);line-height:1.3;padding:6px 10px;border:2px solid var(--accent);border-radius:9px;background:var(--surface);color:var(--ink);box-shadow:0 6px 20px rgba(10,16,20,.15)}
 
 /* Outline */
@@ -192,6 +198,9 @@ main.split{flex:1;min-height:0;padding:0;display:grid;grid-template-columns:minm
 .otree ul{list-style:none;margin:0;padding:0}
 .node image.pic{clip-path:inset(0 round 6px)}
 .orow .othumb{flex:none;border:0;padding:0;background:none;margin:3px 4px 0 0;width:30px;height:30px;border-radius:6px;overflow:hidden;outline:1px solid var(--line)}
+.orow .olink{flex:none;border:0;background:none;width:30px;height:35px;display:grid;place-items:center;color:var(--bc);border-radius:6px;padding:0}
+.orow .olink:hover{background:var(--sunk)}
+.orow .olink svg{width:16px;height:16px}
 .orow .othumb img{width:100%;height:100%;object-fit:cover;display:block}
 .dropzone{position:fixed;inset:0;z-index:70;background:color-mix(in srgb,var(--accent) 16%,transparent);border:3px dashed var(--accent);display:grid;place-items:center;pointer-events:none;padding:24px}
 .dropzone p{background:var(--surface);color:var(--ink);border-radius:999px;padding:12px 22px;font-weight:600;box-shadow:0 6px 20px rgba(10,16,20,.15);text-align:center;max-width:min(520px,100%)}
@@ -326,13 +335,16 @@ const ICON = {
   cost: '<circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.4c-.5-.9-1.5-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2.1 0 2.8 5.8 1.4 5.8 4.2 0 1.3-1.3 2.2-3 2.2-1.3 0-2.4-.5-2.9-1.5M12 6.4V8M12 16.5v1.6"/>',
   image: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/>',
   tidy: '<circle cx="6" cy="12" r="2.5"/><rect x="13" y="3.5" width="7" height="4" rx="1.5"/><rect x="13" y="10" width="7" height="4" rx="1.5"/><rect x="13" y="16.5" width="7" height="4" rx="1.5"/><path d="M8.5 12H11M11 5.5v13M11 5.5h2M11 12h2M11 18.5h2"/>',
-  chev: '<path d="M6 9l6 6 6-6"/>'
+  chev: '<path d="M6 9l6 6 6-6"/>',
+  split: '<rect x="3.5" y="9.5" width="11" height="11" rx="2"/><path d="M13 4h7v7M20 4l-8.5 8.5"/>',
+  open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'
 };
 const svgI = (k, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${ICON[k]}</svg>`;
 
 /* ---------- The document ---------- */
 // One record per map: { id, u, root, auto?: re-arrange whenever ideas overlap, nodes: { <idea id>: { t: text, x, y, k: [sub-idea ids in order], c?: colour 0-7 picked by the person,
-//   a?: colour 0-7 the branch got when it became a main branch, f?: folded, i?: picture (cleanImage), v?: cost } },
+//   a?: colour 0-7 the branch got when it became a main branch, f?: folded, i?: picture (cleanImage), v?: cost,
+//   l?: id of the map this idea links to (left in place when its branch moved to a new map; the canvas and outline open it) } },
 //   gdoc?: id of the Google Doc saved from it, costs?: show costs, unit?: currency or unit costs are in (default '$') }
 // An idea's picture: { s: a small data: URL (made by shrinkImage), w, h: its pixel size, c?: credit line }
 function cleanImage(i) {
@@ -355,6 +367,7 @@ function cleanMap(m) {
     if (n.f) o.f = true;
     const im = cleanImage(n.i); if (im) o.i = im;
     if (Number.isFinite(n.v)) o.v = n.v;
+    if (typeof n.l === 'string' && n.l) o.l = n.l;
     nodes[id] = o;
     for (const c of Array.isArray(n.k) ? n.k : []) if (walk(c)) o.k.push(c);
     return true;
@@ -536,6 +549,22 @@ function reparent(m, id, to) {
   paint(m, id);
   return true;
 }
+// Moves an idea and everything under it into a map of its own, with that idea as the central idea
+// (idea ids are only unique within a map, so they stay). A link idea with the same text takes its place
+// here and opens the new map. Returns the new map record; the caller adds it to doc.maps.
+function splitOff(m, id) {
+  const ids = subtree(m, id), R = m.nodes[id];
+  const nm = { id: uid(), u: now(), root: id, nodes: {} };
+  for (const s of ids) { const n = JSON.parse(JSON.stringify(m.nodes[s])); n.x -= R.x; n.y -= R.y; nm.nodes[s] = n; }
+  delete nm.nodes[id].f;
+  nm.nodes[id].k.forEach((k, i) => { nm.nodes[k].a = i % COLORS; });   // main branches now: colour them as a new map would
+  for (const f of ['auto', 'costs', 'unit']) if (m[f] != null) nm[f] = m[f];
+  const link = { t: R.t, x: R.x, y: R.y, k: [], l: nm.id };
+  for (const f of ['c', 'a', 'i']) if (R[f] != null) link[f] = R[f];
+  for (const s of ids) delete m.nodes[s];
+  m.nodes[id] = link;
+  return nm;
+}
 // After a drag, the outline follows the canvas: sub-ideas top to bottom, main branches clockwise from 12 o'clock
 function resort(m, id) {
   const p = parents(m)[id]; if (!p) return false;
@@ -585,11 +614,33 @@ function checkpoint() { const h = H(); h.u.push(snap(cur())); if (h.u.length > 2
 function restore(from, to) {
   const m = cur(), h = H(); if (!m || !h[from].length) return toast(from === 'u' ? 'Nothing to undo' : 'Nothing to redo');
   closeEditor(true);
-  h[to].push(snap(m)); Object.assign(m, JSON.parse(h[from].pop()));
+  const s = JSON.parse(h[from].pop()), x = s.x, back = JSON.parse(snap(m)); delete s.x;
+  if (x) { const inv = splitStep(x, s); if (inv) back.x = inv; }
+  h[to].push(JSON.stringify(back)); Object.assign(m, s);
   typingId = null; if (sel && !m.nodes[sel]) sel = null;
   changed(m, true); renderAll(document.activeElement && document.activeElement.closest && document.activeElement.closest('#outline') ? { id: sel || m.root, caret: 'end' } : null);
 }
 const undo = () => restore('u', 'r'), redo = () => restore('r', 'u');
+// The other half of undoing or redoing "Move to a new map", which also adds or removes a map.
+// { drop, u }: remove that map (a tombstone, as Delete map does) unless it was changed since the move, then it stays.
+// { add }: put the map back under a fresh id (tombstoned ids stay deleted on every device) and point the link idea in `s` at it.
+// Returns the step that reverses it.
+function splitStep(x, s) {
+  if (x.drop) {
+    const nm = doc.maps.find(r => r.id === x.drop);
+    if (!nm || nm.u !== x.u) { if (nm) toast('The new map was changed after the move, so it stays.', 4000); return null; }
+    doc.maps = doc.maps.filter(r => r.id !== nm.id); if (!doc.deleted.includes(nm.id)) doc.deleted.push(nm.id);
+    delete hist[nm.id];
+    return { add: nm };
+  }
+  if (x.add) {
+    const old = x.add.id, nm = { ...x.add, id: uid(), u: now() };
+    doc.maps.push(nm);
+    for (const k in s.nodes) if (s.nodes[k].l === old) s.nodes[k].l = nm.id;
+    return { drop: nm.id, u: nm.u };
+  }
+  return null;
+}
 
 /* ---------- Measuring ideas ---------- */
 const mctx = document.createElement('canvas').getContext('2d');
@@ -656,7 +707,10 @@ function costLabel(m, id) {
 
 // An idea shows, top to bottom: its picture, its text (none when it has a picture and no text), its cost
 function thumb(i) { const k = Math.min(THUMB_W / i.w, THUMB_H / i.h, 1); return { w: Math.round(i.w * k), h: Math.round(i.h * k) }; }
-function size(m, id) {
+// A link idea is wider by LINK_W, for its open-map button on the right
+const LINK_W = 24;
+function size(m, id) { const s = size0(m, id); return m.nodes[id].l && id !== m.root ? { ...s, w: s.w + LINK_W, lk: true } : s; }
+function size0(m, id) {
   const n = m.nodes[id], root = id === m.root, base = measure(n.t, root), cost = costLabel(m, id);
   if (!n.i && !cost) return base;
   const img = n.i ? thumb(n.i) : null, bare = !!img && !n.t.trim(), px = root ? 18 : 12, py = root ? 12 : 7;
@@ -693,10 +747,11 @@ function renderCanvas() {
     if (id === sel) cls.push('sel');
     if (gest && gest.drop === id) cls.push('drop');
     if (drag && drag.has(id)) cls.push('drag');
+    if (s.lk) cls.push('linked');
     const p = par[id];
     if (p) links += `<path class="link${p === m.root ? ' l1' : ''}" style="--bc:${colorVar(c)}" d="${linkPath(m.nodes[p], size(m, p), n, s)}"/>`;
     const y0 = (s.ty || 0) - (s.lines.length - 1) * s.lh / 2, rx = d === 0 ? Math.min(s.h / 2, 24) : 9;
-    const text = s.lines.map((l, i) => `<tspan x="0" y="${y0 + i * s.lh}">${esc(l)}</tspan>`).join('');
+    const text = s.lines.map((l, i) => `<tspan x="${s.lk ? -LINK_W / 2 : 0}" y="${y0 + i * s.lh}">${esc(l)}</tspan>`).join('');
     const hidden = n.f && n.k.length ? subtree(m, id).length - 1 : 0, sd = side(m, par, id);
     nodes += `<g class="${cls.join(' ')}" data-id="${id}" transform="translate(${n.x} ${n.y})" style="--bc:${colorVar(c)}">`
       + `<rect class="ring" x="${-s.w / 2 - 5}" y="${-s.h / 2 - 5}" width="${s.w + 10}" height="${s.h + 10}" rx="${rx + 4}"/>`
@@ -704,6 +759,7 @@ function renderCanvas() {
       + (s.img ? `<image class="pic" href="${n.i.s}" x="${-s.img.w / 2}" y="${s.iy}" width="${s.img.w}" height="${s.img.h}" preserveAspectRatio="xMidYMid slice"/>` : '')
       + (s.lines.length ? `<text${n.t.trim() ? '' : ' class="ph"'}>${text}</text>` : '')
       + (s.cost ? `<text class="cost${totals(m)[id].kids ? ' sum' : ''}" y="${s.cy}">${esc(s.cost)}</text>` : '')
+      + (s.lk ? `<g class="lnk" data-open="${id}" transform="translate(${s.w / 2 - 14} 0)"><title>Open “${esc(mapTitle(n.l))}”</title><circle r="9"/><path d="M-3 3L3-3M-1.5-3H3v4.5"/></g>` : '')
       + (hidden ? `<g class="fold" data-fold="${id}" transform="translate(${sd * (s.w / 2 + 14)} 0)"><circle r="11"/><text>${hidden > 99 ? '99+' : hidden}</text></g>` : '')
       + '</g>';
   }
@@ -774,8 +830,9 @@ svg.addEventListener('pointerdown', e => {
     return;
   }
   if (ptrs.size > 2) return;
-  const fold = e.target.closest('[data-fold]'), g = e.target.closest('.node');
+  const fold = e.target.closest('[data-fold]'), open = e.target.closest('[data-open]'), g = e.target.closest('.node');
   if (fold) gest = { type: 'fold', id: fold.dataset.fold };
+  else if (open) gest = { type: 'open', id: open.dataset.open };
   else if (g) gest = { type: 'drag', id: g.dataset.id, sx: e.clientX, sy: e.clientY, moved: false };
   else gest = { type: 'pan', sx: e.clientX, sy: e.clientY, v: { ...V }, moved: false };
 });
@@ -829,6 +886,7 @@ function pointerEnd(e) {
   if (!gest) return;
   const m = cur(), g = gest;
   if (g.type === 'pinch') { if (!ptrs.size) gest = null; return saveView(); }
+  if (g.type === 'open') { gest = null; if (e.type === 'pointerup') openLinked(g.id); return; }
   if (g.type === 'fold') { gest = null; if (e.type === 'pointerup' && m && m.nodes[g.id]) { checkpoint(); m.nodes[g.id].f = false; changed(m); renderAll(); } return; }
   if (g.type === 'pan') { gest = null; if (g.moved) return saveView(); if (e.type === 'pointerup') select(null, 'map'); return; }
   if (g.type === 'drag') {
@@ -916,6 +974,7 @@ function renderOutline(focus) {
       + (d ? '<span class="bul"></span>' : '')
       + (n.i ? `<button type="button" class="othumb" data-pic="${id}" tabindex="-1" aria-label="Picture"><img src="${n.i.s}" alt=""></button>` : '')
       + `<textarea rows="1" class="ot${d ? '' : ' root'}" data-id="${id}" placeholder="${d ? 'New idea' : 'Central idea'}" enterkeyhint="next" autocomplete="off" spellcheck="true" aria-label="${d ? 'Idea' : 'Central idea'}">${esc(n.t)}</textarea>`
+      + (n.l && d ? `<button type="button" class="olink" data-open="${id}" tabindex="-1" title="Open “${esc(mapTitle(n.l))}” (Ctrl + Enter)" aria-label="Open the linked map">${svgI('open')}</button>` : '')
       + (m.costs ? `<span class="ocost"><input type="text" data-cost="${id}" inputmode="decimal" enterkeyhint="next" autocomplete="off" value="${Number.isFinite(n.v) ? esc(costFmt.format(n.v)) : ''}" placeholder="${esc(unitOf(m) || 'cost')}" aria-label="Cost"><small data-tot="${id}">${sumText(m, id)}</small></span>` : '')
       + '</div>'
       + (has && open ? `<ul role="group">${n.k.map(k => li(k, d + 1)).join('')}</ul>` : '') + '</li>';
@@ -977,6 +1036,7 @@ outline.addEventListener('input', e => {
   if (id === m.root) renderPicker();
 });
 outline.addEventListener('click', e => {
+  const open = e.target.closest('[data-open]'); if (open) return openLinked(open.dataset.open);
   const pic = e.target.closest('[data-pic]'); if (pic) { sel = pic.dataset.pic; markOutlineSel(); renderCanvas(); return picDrawer(pic.dataset.pic); }
   const b = e.target.closest('[data-tw]'); if (!b) return;
   const m = cur(), id = b.dataset.tw; if (!m || !m.nodes[id] || !m.nodes[id].k.length) return;
@@ -993,6 +1053,8 @@ outline.addEventListener('keydown', e => {
   const inp = e.target; if (inp.tagName !== 'TEXTAREA' || e.isComposing) return;
   const m = cur(), id = inp.dataset.id; if (!m || !m.nodes[id]) return;
   const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 'Enter') { e.preventDefault(); if (m.nodes[id].l) openLinked(id); return; }
+  if (e.altKey && !mod && e.code === 'KeyM') { e.preventDefault(); return act('split', 'outline'); }
   if (e.key === 'Enter') {
     e.preventDefault(); checkpoint(); typingId = null;
     const n = m.nodes[id];
@@ -1025,8 +1087,8 @@ outline.addEventListener('keydown', e => {
 
 /* ---------- Toolbars ---------- */
 const TB = {
-  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['image', 'Picture'], ['cost', 'Cost'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
-  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['image', 'Picture'], ['cost', 'Cost'], ['fold', 'Fold or unfold'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  outline: [['sibling', 'New idea below'], ['child', 'New sub-idea'], '|', ['outdent', 'Move out a level'], ['indent', 'Move in a level'], ['up', 'Move up'], ['down', 'Move down'], '|', ['fold', 'Fold or unfold'], ['image', 'Picture'], ['cost', 'Cost'], ['split', 'Move to a new map (Alt + M)'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
+  map: [['child', 'New sub-idea'], ['sibling', 'New idea next to this one'], ['edit', 'Edit text'], ['color', 'Colour'], ['image', 'Picture'], ['cost', 'Cost'], ['fold', 'Fold or unfold'], ['split', 'Move to a new map (Alt + M)'], ['delete', 'Delete idea'], '|', ['undo', 'Undo'], ['redo', 'Redo']],
   zoom: [['zin', 'Zoom in'], ['zout', 'Zoom out'], ['fit', 'Fit the map on screen'], ['tidy', 'Tidy up the layout'], ['auto', 'Auto-arrange: tidy up whenever ideas overlap']]
 };
 function toolbar(el, list, from) {
@@ -1038,7 +1100,7 @@ toolbar($('#ztools'), TB.zoom, 'map');
 function updateTools() {
   const m = cur(), n = m && sel && m.nodes[sel], h = hist[curId], par = n ? parents(m) : {}, p = n && par[sel], k = p ? m.nodes[p].k : [];
   const off = {
-    child: !n, sibling: !n, edit: !n, image: !n, cost: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length,
+    child: !n, sibling: !n, edit: !n, image: !n, cost: !n, color: !n || sel === m.root, delete: !n || sel === m.root, fold: !n || sel === m.root || !n.k.length, split: !n || sel === m.root || !!n.l,
     indent: !p || k.indexOf(sel) < 1, outdent: !p || !par[p], up: !p || k.indexOf(sel) < 1, down: !p || k.indexOf(sel) === k.length - 1,
     undo: !h || !h.u.length, redo: !h || !h.r.length
   };
@@ -1055,7 +1117,7 @@ document.addEventListener('click', e => {
 function act(a, from, caret = 'end') {
   const m = cur(); if (!m) return;
   const id = sel && m.nodes[sel] ? sel : null;
-  if (['child', 'sibling', 'edit', 'color', 'image', 'cost', 'fold', 'delete', 'indent', 'outdent', 'up', 'down'].includes(a) && !id) return toast('Tap an idea first');
+  if (['child', 'sibling', 'edit', 'color', 'image', 'cost', 'fold', 'delete', 'indent', 'outdent', 'up', 'down', 'split'].includes(a) && !id) return toast('Tap an idea first');
   const keep = r => { if (!r) { H().u.pop(); return; } typingId = null; changed(m); renderAll(from === 'outline' ? { id, caret } : null); if (from === 'map') reveal(id); };
   switch (a) {
     case 'child': case 'sibling': {
@@ -1081,6 +1143,21 @@ function act(a, from, caret = 'end') {
       sel = removeNode(m, id); changed(m); renderAll(from === 'outline' ? { id: sel, caret: 'end' } : null);
       return toast(count > 1 ? `Deleted ${count} ideas` : 'Deleted the idea', 5000, { label: 'Undo', run: undo });
     }
+    case 'split': {
+      if (id === m.root) return toast('The central idea is the whole map. To copy it, use This map → Duplicate.');
+      if (m.nodes[id].l) return toast('This idea already links to a map of its own.');
+      closeEditor(true); closeSwatches();
+      checkpoint();
+      const from = m.id, nm = splitOff(m, id), count = Object.keys(nm.nodes).length, h = H();
+      h.u.push(JSON.stringify({ ...JSON.parse(h.u.pop()), x: { drop: nm.id, u: nm.u } }));   // undo also takes the new map away
+      typingId = null; sel = id; changed(m);
+      addMap(nm);
+      sel = nm.root; renderAll();
+      return toast(`Moved ${plural(count, 'idea')} to a new map`, 6000, { label: 'Undo', run: () => {
+        if (curId !== from && doc.maps.some(r => r.id === from)) { setCurrent(from); renderAll(); if (needFit) fit(); }
+        undo();
+      } });
+    }
     case 'undo': return undo();
     case 'redo': return redo();
     case 'zin': return zoom(1.25);
@@ -1095,6 +1172,13 @@ function act(a, from, caret = 'end') {
       return toast(m.auto ? 'Auto-arrange on: the map tidies itself whenever ideas overlap' : 'Auto-arrange off: ideas stay where you put them', 3500);
     }
   }
+}
+// Opens the map a link idea points to
+function mapTitle(mid) { const r = doc.maps.find(x => x.id === mid); return r ? title(r) : 'a deleted map'; }
+function openLinked(id) {
+  const m = cur(), n = m && m.nodes[id]; if (!n || !n.l) return;
+  if (!doc.maps.some(r => r.id === n.l)) return toast('The map this idea linked to was deleted.', 4000);
+  closeEditor(true); closeSwatches(); setCurrent(n.l); renderAll(); if (needFit) fit();
 }
 function select(id, from) {
   sel = id; renderCanvas(); markOutlineSel();
@@ -1125,6 +1209,8 @@ svg.addEventListener('keydown', e => {
   if (e.key === '-') return zoom(0.8);
   if (!sel || !m.nodes[sel]) { if (/^Arrow/.test(e.key) || e.key === 'Enter') { e.preventDefault(); select(m.root, 'map'); } return; }
   const par = parents(m), n = m.nodes[sel];
+  if (mod && e.key === 'Enter') { e.preventDefault(); if (n.l) openLinked(sel); return; }
+  if (e.altKey && !mod && e.code === 'KeyM') { e.preventDefault(); return act('split', 'map'); }
   if (e.key === 'Tab' || e.key === 'Insert') { e.preventDefault(); return act('child', 'map'); }
   if (e.key === 'Enter') { e.preventDefault(); return act(sel === m.root ? 'child' : 'sibling', 'map'); }
   if (e.key === 'F2' || e.key === ' ') { e.preventDefault(); return openEditor(sel); }
@@ -1544,7 +1630,8 @@ function settingsDrawer() {
       <dl class="help small">
         <dt>Map</dt><dd>Drag an idea to move it with everything under it. Drop it onto another idea to put it there. Drag the background to pan; pinch, or Ctrl + scroll, to zoom. Double-tap an idea to edit it.</dd>
         <dt>Outline</dt><dd>The same map as a list. Type to edit, Enter adds an idea, Tab and Shift + Tab move it in and out a level, Alt + ↑ / ↓ reorder. On a phone, use the buttons above the list.</dd>
-        <dt>Keys on the map</dt><dd>Tab: sub-idea · Enter: idea next to this one · F2, Space or just start typing: edit · Arrows: move around · Delete: delete · Ctrl + Z: undo.</dd>
+        <dt>Keys on the map</dt><dd>Tab: sub-idea · Enter: idea next to this one · F2, Space or just start typing: edit · Arrows: move around · Delete: delete · Alt + M: move to a new map · Ctrl + Enter: open a linked map · Ctrl + Z: undo.</dd>
+        <dt>Move to a new map</dt><dd>Takes the selected idea and everything under it into a map of its own. A dashed idea with the same text stays in its place; its ↗ button opens the new map. Undo puts the branch back.</dd>
       </dl></section>`, d => {
     wireDrive(d.querySelector('#drivePanel'));
     d.querySelector('#stExport').onclick = () => download(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }), `Mind Palace backup ${new Date().toISOString().slice(0, 10)}.json`);
